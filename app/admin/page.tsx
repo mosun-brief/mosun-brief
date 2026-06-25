@@ -105,10 +105,12 @@ function formatDate(value: string) {
 
 export default function AdminPage() {
   const [secret, setSecret] = useState("");
+  const [testEmail, setTestEmail] = useState("");
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [message, setMessage] = useState("");
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const loadStats = async () => {
     setMessage("");
@@ -139,12 +141,66 @@ export default function AdminPage() {
     setIsLoadingStats(false);
   };
 
-  const sendNewsletter = async () => {
+  const sendTestNewsletter = async () => {
+    if (!testEmail) {
+      setMessage("테스트 수신 이메일을 입력하세요.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      "현재 구독자들에게 AI-FU 브리프를 발송할까요?"
+      `${testEmail} 주소로 테스트 브리프를 발송할까요? 전체 구독자에게는 발송되지 않습니다.`
     );
 
     if (!confirmed) return;
+
+    setMessage("");
+    setIsSendingTest(true);
+
+    try {
+      const response = await fetch(
+        `/api/send-test-newsletter?secret=${encodeURIComponent(secret)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            testEmail,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.error || "테스트 브리프 발송에 실패했습니다.");
+        setIsSendingTest(false);
+        return;
+      }
+
+      setMessage(data.message || "테스트 브리프 발송이 완료되었습니다.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      setMessage(`테스트 브리프 발송 중 오류가 발생했습니다. ${errorMessage}`);
+    }
+
+    setIsSendingTest(false);
+  };
+
+  const sendNewsletter = async () => {
+    const confirmed = window.confirm(
+      "주의: 현재 구독자 전체에게 AI-FU 브리프를 발송합니다. 테스트 발송으로 내용을 확인했나요?"
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirmed = window.confirm(
+      "정말 전체 발송할까요? 이 작업은 실제 메일을 보냅니다."
+    );
+
+    if (!doubleConfirmed) return;
 
     setMessage("");
     setIsSending(true);
@@ -229,8 +285,8 @@ export default function AdminPage() {
               margin: 0,
             }}
           >
-            구독자 상태, persona 분포, 피드백 반응, 브리프 발송을 한 곳에서
-            확인합니다.
+            구독자 상태, persona 분포, 피드백 반응, 테스트 발송과 전체
+            발송을 한 곳에서 관리합니다.
           </p>
         </section>
 
@@ -269,6 +325,33 @@ export default function AdminPage() {
             }}
           />
 
+          <label
+            style={{
+              display: "block",
+              fontSize: 14,
+              fontWeight: 800,
+              marginBottom: 8,
+              marginTop: 8,
+            }}
+          >
+            테스트 수신 이메일
+          </label>
+
+          <input
+            type="email"
+            placeholder="테스트 브리프를 받을 이메일"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            style={{
+              width: "100%",
+              border: "1px solid #d1d5db",
+              borderRadius: 12,
+              padding: "13px 14px",
+              fontSize: 15,
+              marginBottom: 14,
+            }}
+          />
+
           <div
             style={{
               display: "flex",
@@ -294,20 +377,41 @@ export default function AdminPage() {
             </button>
 
             <button
+              onClick={sendTestNewsletter}
+              disabled={isSendingTest || !secret || !testEmail}
+              style={{
+                border: "none",
+                borderRadius: 12,
+                padding: "13px 16px",
+                background:
+                  isSendingTest || !secret || !testEmail ? "#9ca3af" : "#7c3aed",
+                color: "white",
+                fontSize: 15,
+                fontWeight: 900,
+                cursor:
+                  isSendingTest || !secret || !testEmail
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              {isSendingTest ? "테스트 발송 중..." : "테스트 브리프 발송"}
+            </button>
+
+            <button
               onClick={sendNewsletter}
               disabled={isSending || !secret}
               style={{
                 border: "none",
                 borderRadius: 12,
                 padding: "13px 16px",
-                background: isSending || !secret ? "#9ca3af" : "#059669",
+                background: isSending || !secret ? "#9ca3af" : "#dc2626",
                 color: "white",
                 fontSize: 15,
                 fontWeight: 900,
                 cursor: isSending || !secret ? "not-allowed" : "pointer",
               }}
             >
-              {isSending ? "발송 중..." : "AI-FU 브리프 발송"}
+              {isSending ? "전체 발송 중..." : "전체 브리프 발송"}
             </button>
           </div>
 
@@ -322,6 +426,7 @@ export default function AdminPage() {
                 fontSize: 14,
                 fontWeight: 800,
                 color: "#374151",
+                lineHeight: 1.6,
               }}
             >
               {message}
