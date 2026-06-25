@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+type Subscriber = {
+  id: string;
+  email: string;
+  ai_emotion: string | null;
+  ai_intent: string | null;
+  blocker: string | null;
+  action_time: string | null;
+  persona_type: string | null;
+  created_at: string;
+};
+
+type Feedback = {
+  id: number;
+  subscriber_email: string | null;
+  feedback_type: string | null;
+  action_done: boolean | null;
+  free_text: string | null;
+  created_at: string;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const adminSecret = process.env.ADMIN_SECRET;
@@ -19,77 +39,106 @@ if (!adminSecret) {
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-export async function POST(req: NextRequest) {
-  try {
-    const secret = req.headers.get("x-admin-secret");
+function getPersonaCounts(subscribers: Subscriber[]) {
+  const counts: Record<string, number> = {};
 
-    if (!secret || secret !== adminSecret) {
+  for (const subscriber of subscribers) {
+    const persona = subscriber.persona_type || "Unknown";
+    counts[persona] = (counts[persona] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([persona, count]) => ({
+      persona,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function getFeedbackCounts(feedbacks: Feedback[]) {
+  const counts: Record<string, number> = {};
+
+  for (const feedback of feedbacks) {
+    const type = feedback.feedback_type || "unknown";
+    counts[type] = (counts[type] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([type, count]) => ({
+      type,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const secretFromQuery = request.nextUrl.searchParams.get("secret");
+    const secretFromHeader = request.headers.get("x-admin-secret");
+    const secret = secretFromHeader || secretFromQuery;
+
+    if (secret !== adminSecret) {
       return NextResponse.json(
-        { error: "권한이 없습니다. ADMIN_SECRET을 확인하세요." },
+        {
+          error: "관리자 인증에 실패했습니다.",
+        },
         { status: 401 }
       );
     }
 
-    const { count: subscriberCount, error: subscriberError } =
-      await supabaseAdmin
-        .from("subscribers")
-        .select("*", { count: "exact", head: true });
+    const { data: subscribers, error: subscribersError } = await supabaseAdmin
+      .from("subscribers")
+      .select(
+        "id, email, ai_emotion, ai_intent, blocker, action_time, persona_type, created_at"
+      )
+      .order("created_at", { ascending: false });
 
-    if (subscriberError) {
+    if (subscribersError) {
       return NextResponse.json(
         {
-          error: "구독자 수를 불러오지 못했습니다.",
-          detail: subscriberError.message,
+          error: "구독자 조회 실패",
+          detail: subscribersError.message,
         },
         { status: 500 }
       );
     }
 
-    const { count: pendingNewsCount, error: pendingNewsError } =
-      await supabaseAdmin
-        .from("newsletter_items")
-        .select("*", { count: "exact", head: true })
-        .eq("is_sent", false);
-
-    if (pendingNewsError) {
-      return NextResponse.json(
-        {
-          error: "발송 대기 뉴스 수를 불러오지 못했습니다.",
-          detail: pendingNewsError.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    const { data: recentNews, error: recentNewsError } = await supabaseAdmin
-      .from("newsletter_items")
-      .select("id, title, category, difficulty, is_sent, created_at")
+    const { data: feedbacks, error: feedbacksError } = await supabaseAdmin
+      .from("feedbacks")
+      .select(
+        "id, subscriber_email, feedback_type, action_done, free_text, created_at"
+      )
       .order("created_at", { ascending: false })
-      .limit(8);
+      .limit(50);
 
-    if (recentNewsError) {
+    if (feedbacksError) {
       return NextResponse.json(
         {
-          error: "최근 뉴스를 불러오지 못했습니다.",
-          detail: recentNewsError.message,
+          error: "피드백 조회 실패",
+          detail: feedbacksError.message,
         },
         { status: 500 }
       );
     }
+
+    const safeSubscribers = (subscribers || []) as Subscriber[];
+    const safeFeedbacks = (feedbacks || []) as Feedback[];
 
     return NextResponse.json({
-      subscriberCount: subscriberCount || 0,
-      pendingNewsCount: pendingNewsCount || 0,
-      recentNews: recentNews || [],
+      totalSubscribers: safeSubscribers.length,
+      totalFeedbacks: safeFeedbacks.length,
+      personaCounts: getPersonaCounts(safeSubscribers),
+      feedbackCounts: getFeedbackCounts(safeFeedbacks),
+      recentSubscribers: safeSubscribers.slice(0, 10),
+      recentFeedbacks: safeFeedbacks.slice(0, 10),
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "알 수 없는 오류";
+    const message = error instanceof Error ? error.message : "Unknown error";
 
     return NextResponse.json(
       {
-        error: "관리자 상태 조회 중 서버 오류가 발생했습니다.",
-        detail: errorMessage,
+        error: "관리자 통계 조회 중 서버 오류",
+        detail: message,
       },
       { status: 500 }
     );

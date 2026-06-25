@@ -3,17 +3,50 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+type MessageType = "success" | "error" | "info";
+
+function getPersonaType(aiEmotion: string, aiIntent: string) {
+  if (aiIntent === "service_building" && aiEmotion === "anxious") {
+    return "Builder-Anxious";
+  }
+
+  if (aiIntent === "service_building") {
+    return "Builder";
+  }
+
+  if (aiIntent === "work_efficiency") {
+    return "Adopter";
+  }
+
+  if (aiEmotion === "anxious") {
+    return "Anxious";
+  }
+
+  if (aiEmotion === "skeptical") {
+    return "Skeptic";
+  }
+
+  if (aiEmotion === "fatigue") {
+    return "Avoider";
+  }
+
+  if (aiEmotion === "curious") {
+    return "Explorer";
+  }
+
+  return "Explorer";
+}
+
 export default function HomePage() {
   const [email, setEmail] = useState("");
-  const [jobRole, setJobRole] = useState("");
-  const [interestArea, setInterestArea] = useState("general_ai");
-  const [purpose, setPurpose] = useState("trend_following");
-  const [difficulty, setDifficulty] = useState("normal");
+
+  const [aiEmotion, setAiEmotion] = useState("curious");
+  const [aiIntent, setAiIntent] = useState("not_sure");
+  const [blocker, setBlocker] = useState("too_much_information");
+  const [actionTime, setActionTime] = useState("30min");
 
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "info">(
-    "info"
-  );
+  const [messageType, setMessageType] = useState<MessageType>("info");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -24,14 +57,29 @@ export default function HomePage() {
     setIsLoading(true);
 
     const normalizedEmail = email.trim().toLowerCase();
+    const personaType = getPersonaType(aiEmotion, aiIntent);
 
     const { error } = await supabase.from("subscribers").insert([
       {
         email: normalizedEmail,
-        job_role: jobRole.trim(),
-        interest_area: interestArea,
-        purpose,
-        difficulty,
+
+        ai_emotion: aiEmotion,
+        ai_intent: aiIntent,
+        blocker,
+        action_time: actionTime,
+        persona_type: personaType,
+
+        // 기존 MVP 컬럼은 당장 삭제하지 않고,
+        // 호환성을 위해 최소값만 같이 저장
+        job_role: null,
+        interest_area: "general_ai",
+        purpose: "personal_action",
+        difficulty:
+          actionTime === "10min"
+            ? "easy"
+            : actionTime === "2hours" || actionTime === "weekend"
+            ? "expert"
+            : "normal",
       },
     ]);
 
@@ -45,29 +93,29 @@ export default function HomePage() {
 
       if (isDuplicateEmail) {
         setMessage(
-          "이미 구독 신청이 완료된 이메일입니다. 곧 모순책장 브리프를 받아볼 수 있습니다."
+          "이미 구독 신청이 완료된 이메일입니다. 곧 AI-FU 브리프를 받아볼 수 있습니다."
         );
         setMessageType("info");
         return;
       }
 
       setMessage(
-        "구독 신청 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+        `구독 신청 중 문제가 발생했습니다. ${error.message}`
       );
       setMessageType("error");
       return;
     }
 
     setMessage(
-      "구독 신청이 완료되었습니다. 곧 당신의 관심사에 맞춘 모순책장 브리프를 받아볼 수 있습니다."
+      "구독 신청이 완료되었습니다. 이제 AI-FU가 당신의 상태에 맞는 첫 번째 실행 브리프를 준비합니다."
     );
     setMessageType("success");
 
     setEmail("");
-    setJobRole("");
-    setInterestArea("general_ai");
-    setPurpose("trend_following");
-    setDifficulty("normal");
+    setAiEmotion("curious");
+    setAiIntent("not_sure");
+    setBlocker("too_much_information");
+    setActionTime("30min");
   };
 
   return (
@@ -109,7 +157,7 @@ export default function HomePage() {
               marginBottom: 20,
             }}
           >
-            모순책장 브리프
+            AI-FU
           </p>
 
           <h1
@@ -121,23 +169,23 @@ export default function HomePage() {
               margin: "0 0 20px 0",
             }}
           >
-            AI와 인간,
+            AI 시대,
             <br />
-            기술과 사회의 모순을 읽다
+            막연한 불안을 다음 행동으로
           </h1>
 
           <p
             style={{
-              maxWidth: 720,
+              maxWidth: 740,
               margin: "0 auto",
               fontSize: 18,
               lineHeight: 1.7,
               color: "#d1d5db",
             }}
           >
-            매일 쏟아지는 AI 뉴스 중에서 나에게 필요한 흐름만 골라
-            보내드립니다. 관심 분야, 목적, 난이도에 맞춰 읽기 좋은
-            브리프로 정리합니다.
+            AI-FU는 쏟아지는 AI 뉴스 속에서 멈춰 있는 사람을 위해,
+            당신의 감정과 상황을 바탕으로 읽을거리와 작은 실행 계획을
+            함께 보내는 개인 맞춤 AI 서비스입니다.
           </p>
         </section>
 
@@ -149,16 +197,16 @@ export default function HomePage() {
           }}
         >
           <FeatureCard
-            title="관심 분야 기반"
-            description="의료 AI, 로봇, 투자, 생산성, 연구 동향 등 관심사에 맞춰 뉴스를 선별합니다."
+            title="상태 기반"
+            description="직업이나 관심사보다 먼저, AI를 바라보는 기대·불안·피로감·호기심을 파악합니다."
           />
           <FeatureCard
-            title="목적 기반 요약"
-            description="공부, 업무 활용, 투자 판단, 사업 아이디어 등 읽는 목적에 맞춰 관점을 제공합니다."
+            title="균형 잡힌 해석"
+            description="AI를 무조건 낙관하거나 두려워하지 않도록, 핵심 자료와 반대 관점을 함께 읽습니다."
           />
           <FeatureCard
-            title="짧고 명확하게"
-            description="긴 기사보다 핵심 흐름과 바로 생각해볼 지점을 중심으로 정리합니다."
+            title="작은 Action"
+            description="뉴스를 읽고 끝내지 않고, 이번 주에 실제로 해볼 수 있는 10분·30분·2시간 행동으로 연결합니다."
           />
         </section>
 
@@ -180,7 +228,7 @@ export default function HomePage() {
                 margin: "0 0 8px 0",
               }}
             >
-              맞춤 AI 브리프 구독하기
+              AI-FU 브리프 시작하기
             </h2>
             <p
               style={{
@@ -190,8 +238,8 @@ export default function HomePage() {
                 margin: 0,
               }}
             >
-              이메일과 관심사를 남기면, 선택한 기준에 맞춰 AI 뉴스를
-              받아볼 수 있습니다.
+              몇 가지 질문에 답하면, 당신의 AI 상태에 맞춘 첫 번째 실행
+              브리프를 준비합니다.
             </p>
           </div>
 
@@ -216,64 +264,77 @@ export default function HomePage() {
             </div>
 
             <div>
-              <label style={labelStyle}>직업 / 역할</label>
-              <input
-                type="text"
-                placeholder="예: 의사, 학생, 개발자, 투자자, 기획자"
-                value={jobRole}
-                onChange={(e) => setJobRole(e.target.value)}
-                required
-                style={inputStyle}
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle}>관심 분야</label>
+              <label style={labelStyle}>
+                AI를 생각하면 가장 가까운 감정은?
+              </label>
               <select
-                value={interestArea}
-                onChange={(e) => setInterestArea(e.target.value)}
+                value={aiEmotion}
+                onChange={(e) => setAiEmotion(e.target.value)}
                 required
                 style={inputStyle}
               >
-                <option value="general_ai">전반적인 AI 뉴스</option>
-                <option value="healthcare_ai">의료 AI</option>
-                <option value="robotics">로봇 / 피지컬 AI</option>
-                <option value="investment">AI 투자 / 산업 분석</option>
-                <option value="productivity">업무 자동화 / 생산성</option>
-                <option value="research">논문 / 연구 동향</option>
-                <option value="education">교육 / 학습</option>
-                <option value="startup">스타트업 / 비즈니스</option>
+                <option value="curious">호기심이 든다</option>
+                <option value="expectation">기대된다</option>
+                <option value="anxious">불안하다</option>
+                <option value="fatigue">정보가 너무 많아 피곤하다</option>
+                <option value="skeptical">과장된 것 같아 회의적이다</option>
+                <option value="unknown">잘 모르겠다</option>
               </select>
             </div>
 
             <div>
-              <label style={labelStyle}>구독 목적</label>
+              <label style={labelStyle}>AI로 하고 싶은 것은?</label>
               <select
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
+                value={aiIntent}
+                onChange={(e) => setAiIntent(e.target.value)}
                 required
                 style={inputStyle}
               >
-                <option value="trend_following">최신 트렌드 파악</option>
-                <option value="work_application">업무 활용</option>
-                <option value="investment_decision">투자 판단</option>
-                <option value="study">공부 / 자기계발</option>
-                <option value="business_idea">사업 아이디어 발굴</option>
-                <option value="research_reference">연구 참고</option>
+                <option value="not_sure">아직 잘 모르겠다</option>
+                <option value="work_efficiency">업무 효율을 높이고 싶다</option>
+                <option value="service_building">서비스나 사이트를 만들고 싶다</option>
+                <option value="study">공부나 자기계발에 쓰고 싶다</option>
+                <option value="creation">글쓰기·창작에 활용하고 싶다</option>
+                <option value="money">돈 벌기나 사업 기회를 찾고 싶다</option>
+                <option value="avoid">되도록 피하고 싶지만 알아야 할 것 같다</option>
               </select>
             </div>
 
             <div>
-              <label style={labelStyle}>읽기 난이도</label>
+              <label style={labelStyle}>지금 가장 막히는 것은?</label>
               <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
+                value={blocker}
+                onChange={(e) => setBlocker(e.target.value)}
                 required
                 style={inputStyle}
               >
-                <option value="easy">쉽게 설명</option>
-                <option value="normal">보통 수준</option>
-                <option value="expert">전문가 수준</option>
+                <option value="too_much_information">
+                  정보가 너무 많아서 정리가 안 된다
+                </option>
+                <option value="dont_know_start">
+                  뭘 해야 할지 모르겠다
+                </option>
+                <option value="too_technical">
+                  기술적인 내용이 어렵다
+                </option>
+                <option value="no_time">시간이 없다</option>
+                <option value="fear">뒤처질까 봐 불안하다</option>
+                <option value="no_need">아직 필요성을 잘 모르겠다</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>이번 주 가능한 행동 시간은?</label>
+              <select
+                value={actionTime}
+                onChange={(e) => setActionTime(e.target.value)}
+                required
+                style={inputStyle}
+              >
+                <option value="10min">10분</option>
+                <option value="30min">30분</option>
+                <option value="2hours">2시간</option>
+                <option value="weekend">주말 반나절</option>
               </select>
             </div>
 
@@ -293,7 +354,7 @@ export default function HomePage() {
                 marginTop: 6,
               }}
             >
-              {isLoading ? "구독 신청 중..." : "모순책장 브리프 구독하기"}
+              {isLoading ? "구독 신청 중..." : "AI-FU 브리프 시작하기"}
             </button>
           </form>
 
@@ -341,8 +402,9 @@ export default function HomePage() {
           }}
         >
           <p style={{ margin: 0 }}>
-            현재는 MVP 테스트 버전입니다. 구독 정보는 맞춤 뉴스 발송을 위한
-            목적으로만 사용됩니다.
+            현재는 MVP 테스트 버전입니다. 답변은 개인 맞춤 브리프 제공을
+            위해 사용되며, 다른 사람에게 공유될 경우 익명화된 형태로만
+            사용됩니다.
           </p>
         </section>
       </div>
