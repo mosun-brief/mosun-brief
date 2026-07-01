@@ -1,472 +1,1424 @@
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-type MessageType = "success" | "error" | "info";
+type CategoryGroupKey =
+  | "ai_emotion"
+  | "ai_intent"
+  | "blocker"
+  | "action_time";
 
-function getPersonaType(aiEmotion: string, aiIntent: string) {
-  if (aiIntent === "service_building" && aiEmotion === "anxious") {
-    return "Builder-Anxious";
+type CategoryGroup = {
+  id?: number;
+  group_key: CategoryGroupKey;
+  label: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
+type CategoryOption = {
+  id?: number;
+  group_key: CategoryGroupKey;
+  option_value: string;
+  label: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
+type CategoryBundle = {
+  group: CategoryGroup;
+  options: CategoryOption[];
+};
+
+type SelectedSummary = {
+  aiEmotion: string;
+  aiIntent: string;
+  blocker: string;
+  actionTime: string;
+};
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+const FALLBACK_GROUPS: CategoryGroup[] = [
+  {
+    group_key: "ai_emotion",
+    label: "AI에 대한 감정",
+    description: "AI를 볼 때 지금 가장 가까운 감정을 골라주세요.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    label: "AI로 하고 싶은 것",
+    description: "AI를 통해 가장 먼저 얻고 싶은 방향을 골라주세요.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    label: "지금 막히는 지점",
+    description: "AI를 시작하지 못하게 만드는 가장 큰 이유를 골라주세요.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    group_key: "action_time",
+    label: "이번 주 가능한 행동 시간",
+    description: "이번 주에 실제로 써볼 수 있는 시간을 골라주세요.",
+    sort_order: 4,
+    is_active: true,
+  },
+];
+
+const FALLBACK_OPTIONS: CategoryOption[] = [
+  {
+    group_key: "ai_emotion",
+    option_value: "curious",
+    label: "호기심",
+    description: "AI가 무엇을 가능하게 하는지 궁금해요.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    group_key: "ai_emotion",
+    option_value: "excited",
+    label: "기대됨",
+    description: "AI가 내 일이나 삶에 도움이 될 것 같아요.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    group_key: "ai_emotion",
+    option_value: "anxious",
+    label: "불안",
+    description: "뒤처지거나 대체될까 봐 불안해요.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    group_key: "ai_emotion",
+    option_value: "fatigue",
+    label: "정보가 너무 많아 피곤",
+    description: "볼 것은 많은데 정리가 안 돼요.",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    group_key: "ai_emotion",
+    option_value: "skeptical",
+    label: "회의적",
+    description: "AI가 과장된 것 같고 실제 효과가 궁금해요.",
+    sort_order: 5,
+    is_active: true,
+  },
+  {
+    group_key: "ai_emotion",
+    option_value: "unsure",
+    label: "잘 모르겠음",
+    description: "좋은 건지 위험한 건지 아직 판단이 안 돼요.",
+    sort_order: 6,
+    is_active: true,
+  },
+
+  {
+    group_key: "ai_intent",
+    option_value: "not_sure",
+    label: "아직 모름",
+    description: "AI로 뭘 할 수 있는지부터 알고 싶어요.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "work_efficiency",
+    label: "업무 효율 높이기",
+    description: "문서, 정리, 검색, 반복 업무에 쓰고 싶어요.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "service_building",
+    label: "서비스나 사이트 만들기",
+    description: "웹사이트, 서비스, 자동화 도구를 만들고 싶어요.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "learning",
+    label: "공부나 자기계발",
+    description: "학습, 시험 준비, 지식 습득에 쓰고 싶어요.",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "creative_writing",
+    label: "글쓰기/창작",
+    description: "글, 콘텐츠, 기획, 이미지 작업에 쓰고 싶어요.",
+    sort_order: 5,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "business_opportunity",
+    label: "사업 기회나 돈 벌 기회",
+    description: "수익화, 부업, 사업 아이디어를 찾고 싶어요.",
+    sort_order: 6,
+    is_active: true,
+  },
+  {
+    group_key: "ai_intent",
+    option_value: "avoid_but_need",
+    label: "피하고 싶으나 알아야겠음",
+    description: "적극적으로 쓰고 싶진 않지만 변화는 따라가야 할 것 같아요.",
+    sort_order: 7,
+    is_active: true,
+  },
+
+  {
+    group_key: "blocker",
+    option_value: "too_much_info",
+    label: "정보가 너무 많아 정리가 안됨",
+    description: "무엇이 중요한지 고르기 어려워요.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    option_value: "no_clear_start",
+    label: "뭘 해야할 지 모르겠음",
+    description: "첫 행동을 정하지 못하고 있어요.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    option_value: "too_technical",
+    label: "기술적인 내용이 어려움",
+    description: "용어, 개발, 모델 설명이 부담스러워요.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    option_value: "no_time",
+    label: "시간 없음",
+    description: "관심은 있지만 실제로 해볼 시간이 부족해요.",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    option_value: "fear_of_falling_behind",
+    label: "뒤처질까봐 불안",
+    description: "AI 변화 속도에 비해 내가 늦는 느낌이에요.",
+    sort_order: 5,
+    is_active: true,
+  },
+  {
+    group_key: "blocker",
+    option_value: "low_need",
+    label: "아직 필요성을 모르겠음",
+    description: "왜 써야 하는지 아직 납득이 안 돼요.",
+    sort_order: 6,
+    is_active: true,
+  },
+
+  {
+    group_key: "action_time",
+    option_value: "10min",
+    label: "10분",
+    description: "짧게 읽고 바로 하나만 해볼 수 있어요.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    group_key: "action_time",
+    option_value: "30min",
+    label: "30분",
+    description: "짧은 튜토리얼이나 간단한 적용이 가능해요.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    group_key: "action_time",
+    option_value: "2hours",
+    label: "2시간",
+    description: "작은 산출물이나 미니 실습이 가능해요.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    group_key: "action_time",
+    option_value: "half_day_weekend",
+    label: "주말 반나절",
+    description: "주말에 미니 프로젝트나 긴 실험이 가능해요.",
+    sort_order: 4,
+    is_active: true,
+  },
+];
+
+const DEFAULT_SELECTIONS: Record<CategoryGroupKey, string> = {
+  ai_emotion: "fatigue",
+  ai_intent: "not_sure",
+  blocker: "too_much_info",
+  action_time: "30min",
+};
+
+const GROUP_STEP_LABELS: Record<CategoryGroupKey, string> = {
+  ai_emotion: "01",
+  ai_intent: "02",
+  blocker: "03",
+  action_time: "04",
+};
+
+const GROUP_HELP_TEXTS: Record<CategoryGroupKey, string> = {
+  ai_emotion: "정답은 없습니다. 지금 가장 가까운 느낌 하나만 고르면 됩니다.",
+  ai_intent: "목표가 뚜렷하지 않아도 괜찮습니다. ‘아직 모름’도 중요한 신호입니다.",
+  blocker: "AI-FU는 이 막힘을 기준으로 자료와 실행 단계를 줄입니다.",
+  action_time: "선택한 시간 안에 끝낼 수 있는 행동 제안을 함께 보냅니다.",
+};
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function buildBundles(groups: CategoryGroup[], options: CategoryOption[]) {
+  return groups
+    .filter((group) => group.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((group) => ({
+      group,
+      options: options
+        .filter(
+          (option) =>
+            option.is_active && option.group_key === group.group_key
+        )
+        .sort((a, b) => a.sort_order - b.sort_order),
+    }));
+}
+
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {
+      ok: false,
+      message: `빈 응답을 받았습니다. status=${response.status}`,
+    };
   }
 
-  if (aiIntent === "service_building") {
-    return "Builder";
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      message: `JSON이 아닌 응답을 받았습니다. status=${response.status}`,
+      rawText: text.slice(0, 1000),
+    };
   }
+}
 
-  if (aiIntent === "work_efficiency") {
-    return "Adopter";
-  }
-
-  if (aiEmotion === "anxious") {
-    return "Anxious";
-  }
-
-  if (aiEmotion === "skeptical") {
-    return "Skeptic";
-  }
-
-  if (aiEmotion === "fatigue") {
-    return "Avoider";
-  }
-
-  if (aiEmotion === "curious") {
-    return "Explorer";
-  }
-
-  return "Explorer";
+function findSelectedLabel(
+  options: CategoryOption[],
+  groupKey: CategoryGroupKey,
+  value: string
+) {
+  return (
+    options.find(
+      (option) =>
+        option.group_key === groupKey && option.option_value === value
+    )?.label || value
+  );
 }
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const [jobRole, setJobRole] = useState("");
+  const [difficulty, setDifficulty] = useState("easy");
 
-  const [aiEmotion, setAiEmotion] = useState("curious");
-  const [aiIntent, setAiIntent] = useState("not_sure");
-  const [blocker, setBlocker] = useState("too_much_information");
-  const [actionTime, setActionTime] = useState("30min");
+  const [groups, setGroups] = useState<CategoryGroup[]>(FALLBACK_GROUPS);
+  const [options, setOptions] = useState<CategoryOption[]>(FALLBACK_OPTIONS);
 
+  const [selections, setSelections] =
+    useState<Record<CategoryGroupKey, string>>(DEFAULT_SELECTIONS);
+
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<MessageType>("info");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const bundles = useMemo(() => buildBundles(groups, options), [groups, options]);
 
-    setMessage("");
-    setMessageType("info");
-    setIsLoading(true);
+  const selectedSummary = useMemo(
+    () => ({
+      aiEmotion: findSelectedLabel(options, "ai_emotion", selections.ai_emotion),
+      aiIntent: findSelectedLabel(options, "ai_intent", selections.ai_intent),
+      blocker: findSelectedLabel(options, "blocker", selections.blocker),
+      actionTime: findSelectedLabel(
+        options,
+        "action_time",
+        selections.action_time
+      ),
+    }),
+    [options, selections]
+  );
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const personaType = getPersonaType(aiEmotion, aiIntent);
+  useEffect(() => {
+    async function loadCategories() {
+      setLoadingCategories(true);
 
-    const { error } = await supabase.from("subscribers").insert([
-      {
-        email: normalizedEmail,
-
-        ai_emotion: aiEmotion,
-        ai_intent: aiIntent,
-        blocker,
-        action_time: actionTime,
-        persona_type: personaType,
-
-        // 기존 MVP 컬럼은 당장 삭제하지 않고,
-        // 호환성을 위해 최소값만 같이 저장
-        job_role: null,
-        interest_area: "general_ai",
-        purpose: "personal_action",
-        difficulty:
-          actionTime === "10min"
-            ? "easy"
-            : actionTime === "2hours" || actionTime === "weekend"
-            ? "expert"
-            : "normal",
-      },
-    ]);
-
-    setIsLoading(false);
-
-    if (error) {
-      const isDuplicateEmail =
-        error.code === "23505" ||
-        error.message.toLowerCase().includes("duplicate") ||
-        error.message.toLowerCase().includes("unique");
-
-      if (isDuplicateEmail) {
-        setMessage(
-          "이미 구독 신청이 완료된 이메일입니다. 곧 AI-FU 브리프를 받아볼 수 있습니다."
-        );
-        setMessageType("info");
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setGroups(FALLBACK_GROUPS);
+        setOptions(FALLBACK_OPTIONS);
+        setLoadingCategories(false);
         return;
       }
 
-      setMessage(
-        `구독 신청 중 문제가 발생했습니다. ${error.message}`
-      );
-      setMessageType("error");
+      try {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+        const [
+          { data: groupData, error: groupError },
+          { data: optionData, error: optionError },
+        ] = await Promise.all([
+          supabase
+            .from("subscriber_category_groups")
+            .select("id, group_key, label, description, sort_order, is_active")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+          supabase
+            .from("subscriber_category_options")
+            .select(
+              "id, group_key, option_value, label, description, sort_order, is_active"
+            )
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+        ]);
+
+        if (groupError || optionError) {
+          setGroups(FALLBACK_GROUPS);
+          setOptions(FALLBACK_OPTIONS);
+          return;
+        }
+
+        if (groupData && groupData.length > 0) {
+          setGroups(groupData as CategoryGroup[]);
+        }
+
+        if (optionData && optionData.length > 0) {
+          setOptions(optionData as CategoryOption[]);
+        }
+      } catch {
+        setGroups(FALLBACK_GROUPS);
+        setOptions(FALLBACK_OPTIONS);
+      } finally {
+        setLoadingCategories(false);
+      }
+    }
+
+    loadCategories();
+  }, []);
+
+  function handleSelect(groupKey: CategoryGroupKey, optionValue: string) {
+    setSelections((prev) => ({
+      ...prev,
+      [groupKey]: optionValue,
+    }));
+  }
+
+  function handleResetForm() {
+    setIsSuccess(false);
+    setMessage("");
+    setSubmittedEmail("");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setMessage("");
+    setIsSuccess(false);
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!isValidEmail(normalizedEmail)) {
+      setMessage("올바른 이메일을 입력해주세요.");
       return;
     }
 
-    setMessage(
-      "구독 신청이 완료되었습니다. 이제 AI-FU가 당신의 상태에 맞는 첫 번째 실행 브리프를 준비합니다."
-    );
-    setMessageType("success");
+    const aiEmotion = selections.ai_emotion;
+    const aiIntent = selections.ai_intent;
+    const blocker = selections.blocker;
+    const actionTime = selections.action_time;
 
-    setEmail("");
-    setAiEmotion("curious");
-    setAiIntent("not_sure");
-    setBlocker("too_much_information");
-    setActionTime("30min");
-  };
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          job_role: jobRole.trim() || null,
+          difficulty: difficulty || "easy",
+          ai_emotion: aiEmotion,
+          ai_intent: aiIntent,
+          blocker,
+          action_time: actionTime,
+        }),
+      });
+
+      const result = await readJsonResponse(response);
+
+      if (!response.ok || !result.ok) {
+        setMessage(result.message || "구독 저장 중 오류가 발생했습니다.");
+        return;
+      }
+
+      setSubmittedEmail(normalizedEmail);
+      setIsSuccess(true);
+      setMessage(
+        result.message ||
+          "신청이 완료되었습니다. 같은 이메일로 다시 신청한 경우 기존 진단 정보가 업데이트됩니다."
+      );
+
+      window.setTimeout(() => {
+        const element = document.getElementById("subscribe-result");
+        element?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      setMessage(`저장 중 오류가 발생했습니다: ${errorMessage}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #111827 0%, #1f2937 45%, #0f172a 100%)",
-        padding: "48px 16px",
-        color: "white",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 960,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: 32,
-        }}
-      >
-        <section
-          style={{
-            textAlign: "center",
-            paddingTop: 24,
-            paddingBottom: 8,
-          }}
-        >
-          <p
-            style={{
-              display: "inline-block",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#93c5fd",
-              backgroundColor: "rgba(37, 99, 235, 0.18)",
-              border: "1px solid rgba(147, 197, 253, 0.35)",
-              borderRadius: 999,
-              padding: "8px 14px",
-              marginBottom: 20,
-            }}
-          >
-            AI-FU
-          </p>
+    <main style={styles.page}>
+      <section style={styles.shell}>
+        <section style={styles.hero}>
+          <div style={styles.heroText}>
+            <p style={styles.badge}>AI-FU MVP</p>
 
-          <h1
-            style={{
-              fontSize: "clamp(34px, 6vw, 64px)",
-              lineHeight: 1.08,
-              fontWeight: 900,
-              letterSpacing: "-0.04em",
-              margin: "0 0 20px 0",
-            }}
-          >
-            AI 시대,
-            <br />
-            막연한 불안을 다음 행동으로
-          </h1>
+            <h1 style={styles.title}>
+              AI를 알아야 할 것 같은데,
+              <br />
+              어디서부터 시작할지 모르겠다면
+            </h1>
 
-          <p
-            style={{
-              maxWidth: 740,
-              margin: "0 auto",
-              fontSize: 18,
-              lineHeight: 1.7,
-              color: "#d1d5db",
-            }}
-          >
-            AI-FU는 쏟아지는 AI 뉴스 속에서 멈춰 있는 사람을 위해,
-            당신의 감정과 상황을 바탕으로 읽을거리와 작은 실행 계획을
-            함께 보내는 개인 맞춤 AI 서비스입니다.
-          </p>
-        </section>
-
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <FeatureCard
-            title="상태 기반"
-            description="직업이나 관심사보다 먼저, AI를 바라보는 기대·불안·피로감·호기심을 파악합니다."
-          />
-          <FeatureCard
-            title="균형 잡힌 해석"
-            description="AI를 무조건 낙관하거나 두려워하지 않도록, 핵심 자료와 반대 관점을 함께 읽습니다."
-          />
-          <FeatureCard
-            title="작은 Action"
-            description="뉴스를 읽고 끝내지 않고, 이번 주에 실제로 해볼 수 있는 10분·30분·2시간 행동으로 연결합니다."
-          />
-        </section>
-
-        <section
-          style={{
-            backgroundColor: "white",
-            color: "#111827",
-            borderRadius: 28,
-            padding: "28px 24px",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <h2
-              style={{
-                fontSize: 30,
-                fontWeight: 900,
-                letterSpacing: "-0.03em",
-                margin: "0 0 8px 0",
-              }}
-            >
-              AI-FU 브리프 시작하기
-            </h2>
-            <p
-              style={{
-                color: "#6b7280",
-                fontSize: 15,
-                lineHeight: 1.6,
-                margin: 0,
-              }}
-            >
-              몇 가지 질문에 답하면, 당신의 AI 상태에 맞춘 첫 번째 실행
-              브리프를 준비합니다.
+            <p style={styles.description}>
+              AI-FU는 더 많은 뉴스를 보내는 서비스가 아닙니다. 지금 당신의
+              AI 감정, 목적, 막히는 지점, 가능한 시간을 기준으로 이번 주에
+              실제로 해볼 수 있는 작은 실행 브리프를 보내드립니다.
             </p>
+
+            <div style={styles.promiseGrid}>
+              <div style={styles.promiseItem}>
+                <strong style={styles.promiseTitle}>진단</strong>
+                <span style={styles.promiseText}>AI에 대한 현재 상태 확인</span>
+              </div>
+              <div style={styles.promiseItem}>
+                <strong style={styles.promiseTitle}>해석</strong>
+                <span style={styles.promiseText}>나에게 왜 필요한지 설명</span>
+              </div>
+              <div style={styles.promiseItem}>
+                <strong style={styles.promiseTitle}>실행</strong>
+                <span style={styles.promiseText}>이번 주 가능한 행동 제안</span>
+              </div>
+            </div>
           </div>
 
-          <form
-            onSubmit={handleSubscribe}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-            }}
-          >
-            <div>
-              <label style={labelStyle}>이메일</label>
-              <input
-                type="email"
-                placeholder="example@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={inputStyle}
-              />
+          <aside style={styles.previewPanel}>
+            <p style={styles.previewEyebrow}>구독 후 받게 될 것</p>
+            <h2 style={styles.previewTitle}>개인 맞춤 AI 실행 브리프</h2>
+
+            <div style={styles.previewList}>
+              <div style={styles.previewRow}>
+                <span style={styles.previewDot} />
+                <span>지금 볼 만한 AI 자료</span>
+              </div>
+              <div style={styles.previewRow}>
+                <span style={styles.previewDot} />
+                <span>이 자료가 나에게 온 이유</span>
+              </div>
+              <div style={styles.previewRow}>
+                <span style={styles.previewDot} />
+                <span>10분·30분·2시간 단위 실행 제안</span>
+              </div>
+              <div style={styles.previewRow}>
+                <span style={styles.previewDot} />
+                <span>좋음 / 더 깊게 / 별로 피드백 반영</span>
+              </div>
             </div>
 
-            <div>
-              <label style={labelStyle}>
-                AI를 생각하면 가장 가까운 감정은?
-              </label>
-              <select
-                value={aiEmotion}
-                onChange={(e) => setAiEmotion(e.target.value)}
-                required
-                style={inputStyle}
-              >
-                <option value="curious">호기심이 든다</option>
-                <option value="expectation">기대된다</option>
-                <option value="anxious">불안하다</option>
-                <option value="fatigue">정보가 너무 많아 피곤하다</option>
-                <option value="skeptical">과장된 것 같아 회의적이다</option>
-                <option value="unknown">잘 모르겠다</option>
-              </select>
-            </div>
+            <p style={styles.previewNote}>
+              목표는 “많이 아는 것”이 아니라, 압도되지 않고 하나라도 해보는
+              것입니다.
+            </p>
+          </aside>
+        </section>
 
-            <div>
-              <label style={labelStyle}>AI로 하고 싶은 것은?</label>
-              <select
-                value={aiIntent}
-                onChange={(e) => setAiIntent(e.target.value)}
-                required
-                style={inputStyle}
-              >
-                <option value="not_sure">아직 잘 모르겠다</option>
-                <option value="work_efficiency">업무 효율을 높이고 싶다</option>
-                <option value="service_building">서비스나 사이트를 만들고 싶다</option>
-                <option value="study">공부나 자기계발에 쓰고 싶다</option>
-                <option value="creation">글쓰기·창작에 활용하고 싶다</option>
-                <option value="money">돈 벌기나 사업 기회를 찾고 싶다</option>
-                <option value="avoid">되도록 피하고 싶지만 알아야 할 것 같다</option>
-              </select>
-            </div>
+        <section style={styles.card} id="subscribe-result">
+          {isSuccess ? (
+            <SuccessOnboarding
+              email={submittedEmail}
+              summary={selectedSummary}
+              difficulty={difficulty}
+              onReset={handleResetForm}
+            />
+          ) : (
+            <>
+              <div style={styles.cardHeader}>
+                <div>
+                  <p style={styles.cardKicker}>무료 진단 구독</p>
+                  <h2 style={styles.cardTitle}>내 AI-FU 브리핑 설정하기</h2>
+                </div>
+                <p style={styles.cardSubtext}>
+                  1분이면 충분합니다. 선택값은 이후 발송되는 자료 추천과 실행
+                  제안에 사용됩니다.
+                </p>
+              </div>
 
-            <div>
-              <label style={labelStyle}>지금 가장 막히는 것은?</label>
-              <select
-                value={blocker}
-                onChange={(e) => setBlocker(e.target.value)}
-                required
-                style={inputStyle}
-              >
-                <option value="too_much_information">
-                  정보가 너무 많아서 정리가 안 된다
-                </option>
-                <option value="dont_know_start">
-                  뭘 해야 할지 모르겠다
-                </option>
-                <option value="too_technical">
-                  기술적인 내용이 어렵다
-                </option>
-                <option value="no_time">시간이 없다</option>
-                <option value="fear">뒤처질까 봐 불안하다</option>
-                <option value="no_need">아직 필요성을 잘 모르겠다</option>
-              </select>
-            </div>
+              <form onSubmit={handleSubmit}>
+                <div style={styles.formBlock}>
+                  <label style={styles.label}>
+                    이메일
+                    <input
+                      style={styles.input}
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="briefing@example.com"
+                      required
+                    />
+                  </label>
 
-            <div>
-              <label style={labelStyle}>이번 주 가능한 행동 시간은?</label>
-              <select
-                value={actionTime}
-                onChange={(e) => setActionTime(e.target.value)}
-                required
-                style={inputStyle}
-              >
-                <option value="10min">10분</option>
-                <option value="30min">30분</option>
-                <option value="2hours">2시간</option>
-                <option value="weekend">주말 반나절</option>
-              </select>
-            </div>
+                  <label style={styles.label}>
+                    직업/상황
+                    <input
+                      style={styles.input}
+                      type="text"
+                      value={jobRole}
+                      onChange={(event) => setJobRole(event.target.value)}
+                      placeholder="예: 인턴, 직장인, 창업 준비, 학생"
+                    />
+                  </label>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: "100%",
-                border: "none",
-                borderRadius: 14,
-                padding: "16px 20px",
-                fontSize: 17,
-                fontWeight: 900,
-                color: "white",
-                backgroundColor: isLoading ? "#9ca3af" : "#2563eb",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                marginTop: 6,
-              }}
-            >
-              {isLoading ? "구독 신청 중..." : "AI-FU 브리프 시작하기"}
-            </button>
-          </form>
+                  <label style={styles.label}>
+                    선호 난이도
+                    <select
+                      style={styles.input}
+                      value={difficulty}
+                      onChange={(event) => setDifficulty(event.target.value)}
+                    >
+                      <option value="easy">입문</option>
+                      <option value="normal">중간</option>
+                      <option value="expert">심화</option>
+                    </select>
+                  </label>
+                </div>
 
-          {message && (
-            <div
-              style={{
-                marginTop: 18,
-                backgroundColor:
-                  messageType === "success"
-                    ? "#ecfdf5"
-                    : messageType === "error"
-                    ? "#fef2f2"
-                    : "#eff6ff",
-                border:
-                  messageType === "success"
-                    ? "1px solid #10b981"
-                    : messageType === "error"
-                    ? "1px solid #ef4444"
-                    : "1px solid #3b82f6",
-                borderRadius: 14,
-                padding: 14,
-                textAlign: "center",
-                color:
-                  messageType === "success"
-                    ? "#065f46"
-                    : messageType === "error"
-                    ? "#991b1b"
-                    : "#1e40af",
-                fontWeight: 800,
-                lineHeight: 1.6,
-              }}
-            >
-              {message}
-            </div>
+                {loadingCategories && (
+                  <p style={styles.loadingText}>
+                    진단 항목을 불러오는 중입니다. 불러오기에 실패하면 기본
+                    항목으로 진행됩니다.
+                  </p>
+                )}
+
+                <div style={styles.questionStack}>
+                  {bundles.map((bundle) => (
+                    <QuestionBlock
+                      key={bundle.group.group_key}
+                      bundle={bundle}
+                      selectedValue={selections[bundle.group.group_key]}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+                </div>
+
+                <section style={styles.summaryBox}>
+                  <div>
+                    <p style={styles.summaryKicker}>현재 선택 요약</p>
+                    <p style={styles.summaryText}>
+                      <strong>{selectedSummary.aiEmotion}</strong> 상태에서{" "}
+                      <strong>{selectedSummary.aiIntent}</strong>에 관심이 있고,{" "}
+                      <strong>{selectedSummary.blocker}</strong> 때문에 막혀
+                      있으며, 이번 주에는{" "}
+                      <strong>{selectedSummary.actionTime}</strong> 정도 실행할 수
+                      있습니다.
+                    </p>
+                  </div>
+                </section>
+
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.submitButton,
+                    opacity: submitting ? 0.65 : 1,
+                  }}
+                  disabled={submitting}
+                >
+                  {submitting ? "저장 중..." : "내 AI-FU 브리핑 신청하기"}
+                </button>
+
+                {message && (
+                  <div
+                    style={{
+                      ...styles.messageBox,
+                      background: "#fef2f2",
+                      borderColor: "#fecaca",
+                      color: "#b91c1c",
+                    }}
+                  >
+                    {message}
+                  </div>
+                )}
+
+                <p style={styles.footerNote}>
+                  같은 이메일로 다시 신청하면 기존 정보가 업데이트됩니다.
+                </p>
+              </form>
+            </>
           )}
         </section>
-
-        <section
-          style={{
-            textAlign: "center",
-            color: "#9ca3af",
-            fontSize: 13,
-            lineHeight: 1.7,
-            paddingBottom: 24,
-          }}
-        >
-          <p style={{ margin: 0 }}>
-            현재는 MVP 테스트 버전입니다. 답변은 개인 맞춤 브리프 제공을
-            위해 사용되며, 다른 사람에게 공유될 경우 익명화된 형태로만
-            사용됩니다.
-          </p>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }
 
-function FeatureCard({
-  title,
-  description,
+function SuccessOnboarding({
+  email,
+  summary,
+  difficulty,
+  onReset,
 }: {
-  title: string;
-  description: string;
+  email: string;
+  summary: SelectedSummary;
+  difficulty: string;
+  onReset: () => void;
 }) {
+  const difficultyLabel =
+    difficulty === "expert" ? "심화" : difficulty === "normal" ? "중간" : "입문";
+
   return (
-    <div
-      style={{
-        backgroundColor: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.14)",
-        borderRadius: 20,
-        padding: 20,
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <h3
-        style={{
-          fontSize: 18,
-          fontWeight: 800,
-          margin: "0 0 8px 0",
-          color: "white",
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontSize: 14,
-          lineHeight: 1.7,
-          color: "#d1d5db",
-          margin: 0,
-        }}
-      >
-        {description}
-      </p>
-    </div>
+    <section style={styles.successWrap}>
+      <div style={styles.successHero}>
+        <p style={styles.successBadge}>신청 완료</p>
+        <h2 style={styles.successTitle}>이제 AI-FU가 당신에게 맞춰집니다.</h2>
+        <p style={styles.successDescription}>
+          입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 해석, 실행 제안이
+          맞춤화됩니다. 첫 브리프를 받은 뒤 피드백을 누를수록 추천 정확도가 더
+          좋아집니다.
+        </p>
+
+        <div style={styles.successEmailBox}>
+          <span style={styles.successEmailLabel}>발송 이메일</span>
+          <strong style={styles.successEmail}>{email}</strong>
+        </div>
+      </div>
+
+      <div style={styles.resultGrid}>
+        <div style={styles.resultCard}>
+          <span style={styles.resultLabel}>AI에 대한 현재 감정</span>
+          <strong style={styles.resultValue}>{summary.aiEmotion}</strong>
+        </div>
+        <div style={styles.resultCard}>
+          <span style={styles.resultLabel}>AI로 하고 싶은 것</span>
+          <strong style={styles.resultValue}>{summary.aiIntent}</strong>
+        </div>
+        <div style={styles.resultCard}>
+          <span style={styles.resultLabel}>지금 막히는 지점</span>
+          <strong style={styles.resultValue}>{summary.blocker}</strong>
+        </div>
+        <div style={styles.resultCard}>
+          <span style={styles.resultLabel}>이번 주 가능한 행동 시간</span>
+          <strong style={styles.resultValue}>{summary.actionTime}</strong>
+        </div>
+        <div style={styles.resultCard}>
+          <span style={styles.resultLabel}>선호 난이도</span>
+          <strong style={styles.resultValue}>{difficultyLabel}</strong>
+        </div>
+      </div>
+
+      <section style={styles.nextStepBox}>
+        <div style={styles.nextStepHeader}>
+          <p style={styles.nextStepKicker}>다음에 하면 좋은 것</p>
+          <h3 style={styles.nextStepTitle}>첫 브리프를 받기 전 준비</h3>
+        </div>
+
+        <div style={styles.nextStepList}>
+          <div style={styles.nextStepItem}>
+            <div style={styles.nextStepNumber}>1</div>
+            <div>
+              <strong style={styles.nextStepItemTitle}>
+                메일함에서 AI-FU를 확인하세요
+              </strong>
+              <p style={styles.nextStepItemText}>
+                첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
+                도착하면 한 번 열어주세요.
+              </p>
+            </div>
+          </div>
+
+          <div style={styles.nextStepItem}>
+            <div style={styles.nextStepNumber}>2</div>
+            <div>
+              <strong style={styles.nextStepItemTitle}>
+                자료를 전부 읽으려고 하지 마세요
+              </strong>
+              <p style={styles.nextStepItemText}>
+                AI-FU의 목표는 정보 과식이 아니라 선택입니다. 브리프에서
+                “왜 이 자료가 왔는지”와 “이번 주 행동”만 먼저 보면 됩니다.
+              </p>
+            </div>
+          </div>
+
+          <div style={styles.nextStepItem}>
+            <div style={styles.nextStepNumber}>3</div>
+            <div>
+              <strong style={styles.nextStepItemTitle}>
+                피드백 버튼을 눌러주세요
+              </strong>
+              <p style={styles.nextStepItemText}>
+                좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
+                브리프가 더 개인화됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style={styles.briefExampleBox}>
+        <p style={styles.briefExampleKicker}>앞으로 이런 식으로 받게 됩니다</p>
+        <div style={styles.briefExample}>
+          <strong style={styles.briefExampleTitle}>
+            “정보가 너무 많아 피곤한 사람을 위한 이번 주 AI 브리프”
+          </strong>
+          <p style={styles.briefExampleText}>
+            오늘의 자료 1개 → 나에게 온 이유 → 핵심 요약 → 이번 주{" "}
+            {summary.actionTime} 안에 해볼 행동 1개
+          </p>
+        </div>
+      </section>
+
+      <div style={styles.successActions}>
+        <button type="button" style={styles.secondaryButton} onClick={onReset}>
+          다른 이메일로 다시 신청하기
+        </button>
+      </div>
+    </section>
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#374151",
-  marginBottom: 8,
-};
+function QuestionBlock({
+  bundle,
+  selectedValue,
+  onSelect,
+}: {
+  bundle: CategoryBundle;
+  selectedValue: string;
+  onSelect: (groupKey: CategoryGroupKey, optionValue: string) => void;
+}) {
+  const groupKey = bundle.group.group_key;
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 12,
-  padding: "12px 14px",
-  fontSize: 15,
-  color: "#111827",
-  backgroundColor: "white",
+  return (
+    <section style={styles.questionBlock}>
+      <div style={styles.questionHeader}>
+        <div style={styles.stepBadge}>{GROUP_STEP_LABELS[groupKey]}</div>
+
+        <div>
+          <h3 style={styles.questionTitle}>{bundle.group.label}</h3>
+          {bundle.group.description && (
+            <p style={styles.questionDescription}>{bundle.group.description}</p>
+          )}
+          <p style={styles.questionHelp}>{GROUP_HELP_TEXTS[groupKey]}</p>
+        </div>
+      </div>
+
+      <div style={styles.optionGrid}>
+        {bundle.options.map((option) => {
+          const selected = selectedValue === option.option_value;
+
+          return (
+            <button
+              key={`${option.group_key}-${option.option_value}`}
+              type="button"
+              style={{
+                ...styles.optionButton,
+                ...(selected ? styles.optionButtonSelected : {}),
+              }}
+              onClick={() => onSelect(option.group_key, option.option_value)}
+            >
+              <span style={styles.optionTopLine}>
+                <span style={styles.optionLabel}>{option.label}</span>
+                {selected && <span style={styles.selectedPill}>선택됨</span>}
+              </span>
+
+              {option.description && (
+                <span style={styles.optionDescription}>
+                  {option.description}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+const styles: Record<string, CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background:
+      "radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 32%), linear-gradient(135deg, #020617 0%, #0f172a 45%, #111827 100%)",
+    padding: "48px 18px",
+    color: "#ffffff",
+  },
+  shell: {
+    width: "100%",
+    maxWidth: 1120,
+    margin: "0 auto",
+  },
+  hero: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.25fr) minmax(300px, 0.75fr)",
+    gap: 24,
+    alignItems: "stretch",
+    marginBottom: 26,
+  },
+  heroText: {
+    padding: "18px 0",
+  },
+  badge: {
+    display: "inline-block",
+    margin: "0 0 18px",
+    padding: "8px 14px",
+    borderRadius: 999,
+    background: "rgba(59,130,246,0.16)",
+    border: "1px solid rgba(147,197,253,0.42)",
+    color: "#bfdbfe",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  title: {
+    margin: 0,
+    fontSize: "clamp(36px, 5vw, 62px)",
+    lineHeight: 1.08,
+    letterSpacing: "-0.075em",
+  },
+  description: {
+    maxWidth: 780,
+    margin: "22px 0 0",
+    color: "#dbeafe",
+    fontSize: 18,
+    lineHeight: 1.78,
+    wordBreak: "keep-all",
+  },
+  promiseGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: 12,
+    marginTop: 28,
+    maxWidth: 680,
+  },
+  promiseItem: {
+    padding: 16,
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+  promiseTitle: {
+    display: "block",
+    marginBottom: 6,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: 950,
+  },
+  promiseText: {
+    display: "block",
+    color: "#cbd5e1",
+    fontSize: 13,
+    lineHeight: 1.55,
+  },
+  previewPanel: {
+    alignSelf: "end",
+    padding: 24,
+    borderRadius: 28,
+    background: "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.16)",
+    boxShadow: "0 22px 60px rgba(0,0,0,0.22)",
+    backdropFilter: "blur(14px)",
+  },
+  previewEyebrow: {
+    margin: "0 0 8px",
+    color: "#93c5fd",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  previewTitle: {
+    margin: 0,
+    color: "#ffffff",
+    fontSize: 24,
+    lineHeight: 1.25,
+    letterSpacing: "-0.04em",
+  },
+  previewList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 20,
+  },
+  previewRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+    color: "#e5e7eb",
+    fontSize: 14,
+    lineHeight: 1.6,
+  },
+  previewDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "#60a5fa",
+    marginTop: 7,
+    flex: "0 0 auto",
+  },
+  previewNote: {
+    margin: "20px 0 0",
+    paddingTop: 18,
+    borderTop: "1px solid rgba(255,255,255,0.13)",
+    color: "#cbd5e1",
+    fontSize: 13,
+    lineHeight: 1.65,
+    wordBreak: "keep-all",
+  },
+  card: {
+    padding: 28,
+    borderRadius: 30,
+    background: "#ffffff",
+    color: "#111827",
+    boxShadow: "0 24px 70px rgba(0,0,0,0.34)",
+  },
+  cardHeader: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.8fr)",
+    gap: 18,
+    alignItems: "end",
+    marginBottom: 24,
+  },
+  cardKicker: {
+    margin: "0 0 8px",
+    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  cardTitle: {
+    margin: 0,
+    color: "#111827",
+    fontSize: 30,
+    lineHeight: 1.25,
+    letterSpacing: "-0.055em",
+  },
+  cardSubtext: {
+    margin: 0,
+    color: "#6b7280",
+    fontSize: 14,
+    lineHeight: 1.65,
+    wordBreak: "keep-all",
+  },
+  formBlock: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 16,
+    marginBottom: 24,
+  },
+  label: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 9,
+    fontSize: 14,
+    fontWeight: 900,
+    color: "#111827",
+  },
+  input: {
+    height: 52,
+    borderRadius: 15,
+    border: "1px solid #d1d5db",
+    padding: "0 14px",
+    fontSize: 15,
+    color: "#111827",
+    background: "#ffffff",
+    outline: "none",
+  },
+  loadingText: {
+    margin: "4px 0 20px",
+    padding: 14,
+    borderRadius: 14,
+    background: "#f8fafc",
+    color: "#64748b",
+    fontSize: 14,
+    lineHeight: 1.6,
+  },
+  questionStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 18,
+  },
+  questionBlock: {
+    padding: 20,
+    borderRadius: 22,
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+  },
+  questionHeader: {
+    display: "flex",
+    gap: 14,
+    alignItems: "flex-start",
+    marginBottom: 15,
+  },
+  stepBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#111827",
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: 950,
+    flex: "0 0 auto",
+  },
+  questionTitle: {
+    margin: 0,
+    fontSize: 21,
+    letterSpacing: "-0.04em",
+    color: "#111827",
+  },
+  questionDescription: {
+    margin: "7px 0 0",
+    color: "#4b5563",
+    fontSize: 14,
+    lineHeight: 1.6,
+    wordBreak: "keep-all",
+  },
+  questionHelp: {
+    margin: "7px 0 0",
+    color: "#2563eb",
+    fontSize: 13,
+    lineHeight: 1.55,
+    fontWeight: 800,
+    wordBreak: "keep-all",
+  },
+  optionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 10,
+  },
+  optionButton: {
+    minHeight: 92,
+    textAlign: "left",
+    border: "1px solid #e5e7eb",
+    borderRadius: 17,
+    background: "#ffffff",
+    padding: 14,
+    cursor: "pointer",
+    color: "#111827",
+    transition: "border 120ms ease, box-shadow 120ms ease, background 120ms ease",
+  },
+  optionButtonSelected: {
+    border: "2px solid #2563eb",
+    background: "#eff6ff",
+    boxShadow: "0 0 0 3px rgba(37,99,235,0.12)",
+  },
+  optionTopLine: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 7,
+  },
+  optionLabel: {
+    display: "block",
+    fontSize: 15,
+    fontWeight: 950,
+    lineHeight: 1.35,
+  },
+  selectedPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "4px 7px",
+    borderRadius: 999,
+    background: "#2563eb",
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: 900,
+    flex: "0 0 auto",
+  },
+  optionDescription: {
+    display: "block",
+    fontSize: 13,
+    lineHeight: 1.55,
+    color: "#6b7280",
+    wordBreak: "keep-all",
+  },
+  summaryBox: {
+    marginTop: 22,
+    padding: 18,
+    borderRadius: 20,
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+  },
+  summaryKicker: {
+    margin: "0 0 8px",
+    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  summaryText: {
+    margin: 0,
+    color: "#111827",
+    fontSize: 15,
+    lineHeight: 1.75,
+    wordBreak: "keep-all",
+  },
+  submitButton: {
+    width: "100%",
+    height: 60,
+    border: "none",
+    borderRadius: 19,
+    background: "#111827",
+    color: "#ffffff",
+    marginTop: 22,
+    fontSize: 17,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+  messageBox: {
+    marginTop: 16,
+    padding: 15,
+    borderRadius: 15,
+    border: "1px solid",
+    fontSize: 14,
+    lineHeight: 1.6,
+    fontWeight: 800,
+  },
+  footerNote: {
+    margin: "14px 0 0",
+    color: "#6b7280",
+    fontSize: 13,
+    lineHeight: 1.6,
+    textAlign: "center",
+  },
+  successWrap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 22,
+  },
+  successHero: {
+    padding: 26,
+    borderRadius: 26,
+    background:
+      "radial-gradient(circle at top right, rgba(37,99,235,0.16), transparent 34%), #f8fafc",
+    border: "1px solid #e2e8f0",
+  },
+  successBadge: {
+    display: "inline-block",
+    margin: "0 0 12px",
+    padding: "7px 12px",
+    borderRadius: 999,
+    background: "#dcfce7",
+    color: "#15803d",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  successTitle: {
+    margin: 0,
+    color: "#111827",
+    fontSize: 32,
+    lineHeight: 1.22,
+    letterSpacing: "-0.06em",
+  },
+  successDescription: {
+    maxWidth: 820,
+    margin: "14px 0 0",
+    color: "#4b5563",
+    fontSize: 16,
+    lineHeight: 1.75,
+    wordBreak: "keep-all",
+  },
+  successEmailBox: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "center",
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 16,
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+  },
+  successEmailLabel: {
+    color: "#6b7280",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  successEmail: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: 950,
+  },
+  resultGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 12,
+  },
+  resultCard: {
+    padding: 16,
+    borderRadius: 18,
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0 8px 22px rgba(15,23,42,0.05)",
+  },
+  resultLabel: {
+    display: "block",
+    marginBottom: 8,
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 900,
+    lineHeight: 1.4,
+  },
+  resultValue: {
+    display: "block",
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: 950,
+    lineHeight: 1.45,
+    wordBreak: "keep-all",
+  },
+  nextStepBox: {
+    padding: 22,
+    borderRadius: 24,
+    background: "#111827",
+    color: "#ffffff",
+  },
+  nextStepHeader: {
+    marginBottom: 18,
+  },
+  nextStepKicker: {
+    margin: "0 0 7px",
+    color: "#93c5fd",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  nextStepTitle: {
+    margin: 0,
+    fontSize: 24,
+    lineHeight: 1.3,
+    letterSpacing: "-0.04em",
+  },
+  nextStepList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  nextStepItem: {
+    display: "flex",
+    gap: 13,
+    padding: 16,
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.1)",
+  },
+  nextStepNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#ffffff",
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 950,
+    flex: "0 0 auto",
+  },
+  nextStepItemTitle: {
+    display: "block",
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: 950,
+    lineHeight: 1.45,
+  },
+  nextStepItemText: {
+    margin: "5px 0 0",
+    color: "#cbd5e1",
+    fontSize: 14,
+    lineHeight: 1.65,
+    wordBreak: "keep-all",
+  },
+  briefExampleBox: {
+    padding: 20,
+    borderRadius: 22,
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+  },
+  briefExampleKicker: {
+    margin: "0 0 12px",
+    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: 950,
+  },
+  briefExample: {
+    padding: 16,
+    borderRadius: 18,
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+  },
+  briefExampleTitle: {
+    display: "block",
+    color: "#111827",
+    fontSize: 17,
+    fontWeight: 950,
+    lineHeight: 1.5,
+    wordBreak: "keep-all",
+  },
+  briefExampleText: {
+    margin: "9px 0 0",
+    color: "#4b5563",
+    fontSize: 14,
+    lineHeight: 1.7,
+    wordBreak: "keep-all",
+  },
+  successActions: {
+    display: "flex",
+    justifyContent: "center",
+  },
+  secondaryButton: {
+    minHeight: 48,
+    border: "1px solid #d1d5db",
+    borderRadius: 15,
+    background: "#ffffff",
+    color: "#111827",
+    padding: "0 18px",
+    fontSize: 14,
+    fontWeight: 950,
+    cursor: "pointer",
+  },
 };
