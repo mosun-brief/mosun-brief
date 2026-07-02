@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type CategoryGroupKey =
@@ -351,6 +351,7 @@ export default function HomePage() {
   const [selections, setSelections] =
     useState<Record<CategoryGroupKey, string>>(DEFAULT_SELECTIONS);
 
+  const [isMobile, setIsMobile] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -371,6 +372,19 @@ export default function HomePage() {
     }),
     [options, selections]
   );
+
+  useEffect(() => {
+    function updateIsMobile() {
+      setIsMobile(window.innerWidth <= 760);
+    }
+
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+
+    return () => {
+      window.removeEventListener("resize", updateIsMobile);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadCategories() {
@@ -507,41 +521,87 @@ export default function HomePage() {
   }
 
   return (
-    <main style={styles.page}>
-      <section style={styles.shell}>
-        <section style={styles.hero}>
-          <div style={styles.heroText}>
-            <p style={styles.badge}>AI-FU MVP</p>
+    <main style={{ ...styles.page, ...(isMobile ? styles.mobilePage : {}) }}>
+      <section
+        style={{ ...styles.shell, ...(isMobile ? styles.mobileShell : {}) }}
+      >
+        <section
+          style={{ ...styles.hero, ...(isMobile ? styles.mobileHero : {}) }}
+        >
+          <div
+            style={{
+              ...styles.heroText,
+              ...(isMobile ? styles.mobileHeroText : {}),
+            }}
+          >
+            <p style={{ ...styles.badge, ...(isMobile ? styles.mobileBadge : {}) }}>
+              AI-FU MVP
+            </p>
 
-            <h1 style={styles.title}>
+            <h1
+              style={{
+                ...styles.title,
+                ...(isMobile ? styles.mobileTitle : {}),
+              }}
+            >
               AI를 알아야 할 것 같은데,
               <br />
               어디서부터 시작할지 모르겠다면
             </h1>
 
-            <p style={styles.description}>
+            <p
+              style={{
+                ...styles.description,
+                ...(isMobile ? styles.mobileDescription : {}),
+              }}
+            >
               AI-FU는 더 많은 뉴스를 보내는 서비스가 아닙니다. 지금 당신의
               AI 감정, 목적, 막히는 지점, 가능한 시간을 기준으로 이번 주에
               실제로 해볼 수 있는 작은 실행 브리프를 보내드립니다.
             </p>
 
-            <div style={styles.promiseGrid}>
-              <div style={styles.promiseItem}>
+            <div
+              style={{
+                ...styles.promiseGrid,
+                ...(isMobile ? styles.mobilePromiseGrid : {}),
+              }}
+            >
+              <div
+                style={{
+                  ...styles.promiseItem,
+                  ...(isMobile ? styles.mobilePromiseItem : {}),
+                }}
+              >
                 <strong style={styles.promiseTitle}>진단</strong>
                 <span style={styles.promiseText}>AI에 대한 현재 상태 확인</span>
               </div>
-              <div style={styles.promiseItem}>
+              <div
+                style={{
+                  ...styles.promiseItem,
+                  ...(isMobile ? styles.mobilePromiseItem : {}),
+                }}
+              >
                 <strong style={styles.promiseTitle}>해석</strong>
                 <span style={styles.promiseText}>나에게 왜 필요한지 설명</span>
               </div>
-              <div style={styles.promiseItem}>
+              <div
+                style={{
+                  ...styles.promiseItem,
+                  ...(isMobile ? styles.mobilePromiseItem : {}),
+                }}
+              >
                 <strong style={styles.promiseTitle}>실행</strong>
                 <span style={styles.promiseText}>이번 주 가능한 행동 제안</span>
               </div>
             </div>
           </div>
 
-          <aside style={styles.previewPanel}>
+          <aside
+            style={{
+              ...styles.previewPanel,
+              ...(isMobile ? styles.mobilePreviewPanel : {}),
+            }}
+          >
             <p style={styles.previewEyebrow}>구독 후 받게 될 것</p>
             <h2 style={styles.previewTitle}>개인 맞춤 AI 실행 브리프</h2>
 
@@ -571,20 +631,36 @@ export default function HomePage() {
           </aside>
         </section>
 
-        <section style={styles.card} id="subscribe-result">
+        <section
+          style={{ ...styles.card, ...(isMobile ? styles.mobileCard : {}) }}
+          id="subscribe-result"
+        >
           {isSuccess ? (
             <SuccessOnboarding
               email={submittedEmail}
               summary={selectedSummary}
               difficulty={difficulty}
               onReset={handleResetForm}
+              isMobile={isMobile}
             />
           ) : (
             <>
-              <div style={styles.cardHeader}>
+              <div
+                style={{
+                  ...styles.cardHeader,
+                  ...(isMobile ? styles.mobileCardHeader : {}),
+                }}
+              >
                 <div>
                   <p style={styles.cardKicker}>무료 진단 구독</p>
-                  <h2 style={styles.cardTitle}>내 AI-FU 브리핑 설정하기</h2>
+                  <h2
+                    style={{
+                      ...styles.cardTitle,
+                      ...(isMobile ? styles.mobileCardTitle : {}),
+                    }}
+                  >
+                    내 AI-FU 브리핑 설정하기
+                  </h2>
                 </div>
                 <p style={styles.cardSubtext}>
                   1분이면 충분합니다. 선택값은 이후 발송되는 자료 추천과 실행
@@ -593,7 +669,12 @@ export default function HomePage() {
               </div>
 
               <form onSubmit={handleSubmit}>
-                <div style={styles.formBlock}>
+                <div
+                  style={{
+                    ...styles.formBlock,
+                    ...(isMobile ? styles.mobileFormBlock : {}),
+                  }}
+                >
                   <label style={styles.label}>
                     이메일
                     <input
@@ -645,11 +726,17 @@ export default function HomePage() {
                       bundle={bundle}
                       selectedValue={selections[bundle.group.group_key]}
                       onSelect={handleSelect}
+                      isMobile={isMobile}
                     />
                   ))}
                 </div>
 
-                <section style={styles.summaryBox}>
+                <section
+                  style={{
+                    ...styles.summaryBox,
+                    ...(isMobile ? styles.mobileSummaryBox : {}),
+                  }}
+                >
                   <div>
                     <p style={styles.summaryKicker}>현재 선택 요약</p>
                     <p style={styles.summaryText}>
@@ -667,6 +754,7 @@ export default function HomePage() {
                   type="submit"
                   style={{
                     ...styles.submitButton,
+                    ...(isMobile ? styles.mobileSubmitButton : {}),
                     opacity: submitting ? 0.65 : 1,
                   }}
                   disabled={submitting}
@@ -704,21 +792,40 @@ function SuccessOnboarding({
   summary,
   difficulty,
   onReset,
+  isMobile,
 }: {
   email: string;
   summary: SelectedSummary;
   difficulty: string;
   onReset: () => void;
+  isMobile: boolean;
 }) {
   const difficultyLabel =
     difficulty === "expert" ? "심화" : difficulty === "normal" ? "중간" : "입문";
 
   return (
     <section style={styles.successWrap}>
-      <div style={styles.successHero}>
+      <div
+        style={{
+          ...styles.successHero,
+          ...(isMobile ? styles.mobileSuccessHero : {}),
+        }}
+      >
         <p style={styles.successBadge}>신청 완료</p>
-        <h2 style={styles.successTitle}>이제 AI-FU가 당신에게 맞춰집니다.</h2>
-        <p style={styles.successDescription}>
+        <h2
+          style={{
+            ...styles.successTitle,
+            ...(isMobile ? styles.mobileSuccessTitle : {}),
+          }}
+        >
+          이제 AI-FU가 당신에게 맞춰집니다.
+        </h2>
+        <p
+          style={{
+            ...styles.successDescription,
+            ...(isMobile ? styles.mobileSuccessDescription : {}),
+          }}
+        >
           입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 해석, 실행 제안이
           맞춤화됩니다. 첫 브리프를 받은 뒤 피드백을 누를수록 추천 정확도가 더
           좋아집니다.
@@ -730,7 +837,12 @@ function SuccessOnboarding({
         </div>
       </div>
 
-      <div style={styles.resultGrid}>
+      <div
+        style={{
+          ...styles.resultGrid,
+          ...(isMobile ? styles.mobileResultGrid : {}),
+        }}
+      >
         <div style={styles.resultCard}>
           <span style={styles.resultLabel}>AI에 대한 현재 감정</span>
           <strong style={styles.resultValue}>{summary.aiEmotion}</strong>
@@ -753,51 +865,54 @@ function SuccessOnboarding({
         </div>
       </div>
 
-      <section style={styles.nextStepBox}>
+      <section
+        style={{
+          ...styles.nextStepBox,
+          ...(isMobile ? styles.mobileNextStepBox : {}),
+        }}
+      >
         <div style={styles.nextStepHeader}>
           <p style={styles.nextStepKicker}>다음에 하면 좋은 것</p>
-          <h3 style={styles.nextStepTitle}>첫 브리프를 받기 전 준비</h3>
+          <h3
+            style={{
+              ...styles.nextStepTitle,
+              ...(isMobile ? styles.mobileNextStepTitle : {}),
+            }}
+          >
+            첫 브리프를 받기 전 준비
+          </h3>
         </div>
 
         <div style={styles.nextStepList}>
-          <div style={styles.nextStepItem}>
-            <div style={styles.nextStepNumber}>1</div>
-            <div>
-              <strong style={styles.nextStepItemTitle}>
-                메일함에서 AI-FU를 확인하세요
-              </strong>
-              <p style={styles.nextStepItemText}>
-                첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
-                도착하면 한 번 열어주세요.
-              </p>
-            </div>
-          </div>
+          <NextStepItem number="1">
+            <strong style={styles.nextStepItemTitle}>
+              메일함에서 AI-FU를 확인하세요
+            </strong>
+            <p style={styles.nextStepItemText}>
+              첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
+              도착하면 한 번 열어주세요.
+            </p>
+          </NextStepItem>
 
-          <div style={styles.nextStepItem}>
-            <div style={styles.nextStepNumber}>2</div>
-            <div>
-              <strong style={styles.nextStepItemTitle}>
-                자료를 전부 읽으려고 하지 마세요
-              </strong>
-              <p style={styles.nextStepItemText}>
-                AI-FU의 목표는 정보 과식이 아니라 선택입니다. 브리프에서
-                “왜 이 자료가 왔는지”와 “이번 주 행동”만 먼저 보면 됩니다.
-              </p>
-            </div>
-          </div>
+          <NextStepItem number="2">
+            <strong style={styles.nextStepItemTitle}>
+              자료를 전부 읽으려고 하지 마세요
+            </strong>
+            <p style={styles.nextStepItemText}>
+              AI-FU의 목표는 정보 과식이 아니라 선택입니다. 브리프에서
+              “왜 이 자료가 왔는지”와 “이번 주 행동”만 먼저 보면 됩니다.
+            </p>
+          </NextStepItem>
 
-          <div style={styles.nextStepItem}>
-            <div style={styles.nextStepNumber}>3</div>
-            <div>
-              <strong style={styles.nextStepItemTitle}>
-                피드백 버튼을 눌러주세요
-              </strong>
-              <p style={styles.nextStepItemText}>
-                좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
-                브리프가 더 개인화됩니다.
-              </p>
-            </div>
-          </div>
+          <NextStepItem number="3">
+            <strong style={styles.nextStepItemTitle}>
+              피드백 버튼을 눌러주세요
+            </strong>
+            <p style={styles.nextStepItemText}>
+              좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
+              브리프가 더 개인화됩니다.
+            </p>
+          </NextStepItem>
         </div>
       </section>
 
@@ -823,24 +938,65 @@ function SuccessOnboarding({
   );
 }
 
+function NextStepItem({
+  number,
+  children,
+}: {
+  number: string;
+  children: ReactNode;
+}) {
+  return (
+    <div style={styles.nextStepItem}>
+      <div style={styles.nextStepNumber}>{number}</div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
 function QuestionBlock({
   bundle,
   selectedValue,
   onSelect,
+  isMobile,
 }: {
   bundle: CategoryBundle;
   selectedValue: string;
   onSelect: (groupKey: CategoryGroupKey, optionValue: string) => void;
+  isMobile: boolean;
 }) {
   const groupKey = bundle.group.group_key;
 
   return (
-    <section style={styles.questionBlock}>
-      <div style={styles.questionHeader}>
-        <div style={styles.stepBadge}>{GROUP_STEP_LABELS[groupKey]}</div>
+    <section
+      style={{
+        ...styles.questionBlock,
+        ...(isMobile ? styles.mobileQuestionBlock : {}),
+      }}
+    >
+      <div
+        style={{
+          ...styles.questionHeader,
+          ...(isMobile ? styles.mobileQuestionHeader : {}),
+        }}
+      >
+        <div
+          style={{
+            ...styles.stepBadge,
+            ...(isMobile ? styles.mobileStepBadge : {}),
+          }}
+        >
+          {GROUP_STEP_LABELS[groupKey]}
+        </div>
 
         <div>
-          <h3 style={styles.questionTitle}>{bundle.group.label}</h3>
+          <h3
+            style={{
+              ...styles.questionTitle,
+              ...(isMobile ? styles.mobileQuestionTitle : {}),
+            }}
+          >
+            {bundle.group.label}
+          </h3>
           {bundle.group.description && (
             <p style={styles.questionDescription}>{bundle.group.description}</p>
           )}
@@ -848,7 +1004,12 @@ function QuestionBlock({
         </div>
       </div>
 
-      <div style={styles.optionGrid}>
+      <div
+        style={{
+          ...styles.optionGrid,
+          ...(isMobile ? styles.mobileOptionGrid : {}),
+        }}
+      >
         {bundle.options.map((option) => {
           const selected = selectedValue === option.option_value;
 
@@ -858,6 +1019,7 @@ function QuestionBlock({
               type="button"
               style={{
                 ...styles.optionButton,
+                ...(isMobile ? styles.mobileOptionButton : {}),
                 ...(selected ? styles.optionButtonSelected : {}),
               }}
               onClick={() => onSelect(option.group_key, option.option_value)}
@@ -887,11 +1049,18 @@ const styles: Record<string, CSSProperties> = {
       "radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 32%), linear-gradient(135deg, #020617 0%, #0f172a 45%, #111827 100%)",
     padding: "48px 18px",
     color: "#ffffff",
+    overflowX: "hidden",
+  },
+  mobilePage: {
+    padding: "26px 14px",
   },
   shell: {
     width: "100%",
     maxWidth: 1120,
     margin: "0 auto",
+  },
+  mobileShell: {
+    maxWidth: "100%",
   },
   hero: {
     display: "grid",
@@ -900,8 +1069,19 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "stretch",
     marginBottom: 26,
   },
+  mobileHero: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 18,
+    marginBottom: 18,
+  },
   heroText: {
     padding: "18px 0",
+    minWidth: 0,
+  },
+  mobileHeroText: {
+    padding: "4px 0 0",
+    width: "100%",
   },
   badge: {
     display: "inline-block",
@@ -914,11 +1094,25 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     fontWeight: 900,
   },
+  mobileBadge: {
+    marginBottom: 14,
+    fontSize: 12,
+    padding: "7px 11px",
+  },
   title: {
     margin: 0,
     fontSize: "clamp(36px, 5vw, 62px)",
     lineHeight: 1.08,
     letterSpacing: "-0.075em",
+    wordBreak: "keep-all",
+  },
+  mobileTitle: {
+    fontSize: 38,
+    lineHeight: 1.14,
+    letterSpacing: "-0.055em",
+    maxWidth: "100%",
+    wordBreak: "keep-all",
+    overflowWrap: "normal",
   },
   description: {
     maxWidth: 780,
@@ -928,6 +1122,14 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.78,
     wordBreak: "keep-all",
   },
+  mobileDescription: {
+    marginTop: 16,
+    fontSize: 15,
+    lineHeight: 1.72,
+    maxWidth: "100%",
+    wordBreak: "keep-all",
+    overflowWrap: "normal",
+  },
   promiseGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
@@ -935,11 +1137,21 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 28,
     maxWidth: 680,
   },
+  mobilePromiseGrid: {
+    gridTemplateColumns: "1fr",
+    gap: 10,
+    marginTop: 18,
+    maxWidth: "100%",
+  },
   promiseItem: {
     padding: 16,
     borderRadius: 18,
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.12)",
+    minWidth: 0,
+  },
+  mobilePromiseItem: {
+    padding: 14,
   },
   promiseTitle: {
     display: "block",
@@ -953,6 +1165,7 @@ const styles: Record<string, CSSProperties> = {
     color: "#cbd5e1",
     fontSize: 13,
     lineHeight: 1.55,
+    wordBreak: "keep-all",
   },
   previewPanel: {
     alignSelf: "end",
@@ -962,6 +1175,14 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.16)",
     boxShadow: "0 22px 60px rgba(0,0,0,0.22)",
     backdropFilter: "blur(14px)",
+    minWidth: 0,
+  },
+  mobilePreviewPanel: {
+    alignSelf: "stretch",
+    padding: 18,
+    borderRadius: 22,
+    width: "100%",
+    boxSizing: "border-box",
   },
   previewEyebrow: {
     margin: "0 0 8px",
@@ -975,6 +1196,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 24,
     lineHeight: 1.25,
     letterSpacing: "-0.04em",
+    wordBreak: "keep-all",
   },
   previewList: {
     display: "flex",
@@ -989,6 +1211,7 @@ const styles: Record<string, CSSProperties> = {
     color: "#e5e7eb",
     fontSize: 14,
     lineHeight: 1.6,
+    wordBreak: "keep-all",
   },
   previewDot: {
     width: 8,
@@ -1013,6 +1236,12 @@ const styles: Record<string, CSSProperties> = {
     background: "#ffffff",
     color: "#111827",
     boxShadow: "0 24px 70px rgba(0,0,0,0.34)",
+    width: "100%",
+    boxSizing: "border-box",
+  },
+  mobileCard: {
+    padding: 16,
+    borderRadius: 22,
   },
   cardHeader: {
     display: "grid",
@@ -1020,6 +1249,13 @@ const styles: Record<string, CSSProperties> = {
     gap: 18,
     alignItems: "end",
     marginBottom: 24,
+  },
+  mobileCardHeader: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "stretch",
+    gap: 10,
+    marginBottom: 18,
   },
   cardKicker: {
     margin: "0 0 8px",
@@ -1033,6 +1269,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 30,
     lineHeight: 1.25,
     letterSpacing: "-0.055em",
+    wordBreak: "keep-all",
+  },
+  mobileCardTitle: {
+    fontSize: 24,
+    lineHeight: 1.3,
   },
   cardSubtext: {
     margin: 0,
@@ -1047,6 +1288,11 @@ const styles: Record<string, CSSProperties> = {
     gap: 16,
     marginBottom: 24,
   },
+  mobileFormBlock: {
+    gridTemplateColumns: "1fr",
+    gap: 12,
+    marginBottom: 18,
+  },
   label: {
     display: "flex",
     flexDirection: "column",
@@ -1054,8 +1300,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     fontWeight: 900,
     color: "#111827",
+    minWidth: 0,
   },
   input: {
+    width: "100%",
     height: 52,
     borderRadius: 15,
     border: "1px solid #d1d5db",
@@ -1064,6 +1312,7 @@ const styles: Record<string, CSSProperties> = {
     color: "#111827",
     background: "#ffffff",
     outline: "none",
+    boxSizing: "border-box",
   },
   loadingText: {
     margin: "4px 0 20px",
@@ -1073,6 +1322,7 @@ const styles: Record<string, CSSProperties> = {
     color: "#64748b",
     fontSize: 14,
     lineHeight: 1.6,
+    wordBreak: "keep-all",
   },
   questionStack: {
     display: "flex",
@@ -1084,12 +1334,20 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 22,
     border: "1px solid #e5e7eb",
     background: "#f9fafb",
+    minWidth: 0,
+  },
+  mobileQuestionBlock: {
+    padding: 14,
+    borderRadius: 18,
   },
   questionHeader: {
     display: "flex",
     gap: 14,
     alignItems: "flex-start",
     marginBottom: 15,
+  },
+  mobileQuestionHeader: {
+    gap: 10,
   },
   stepBadge: {
     width: 42,
@@ -1104,11 +1362,22 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 950,
     flex: "0 0 auto",
   },
+  mobileStepBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    fontSize: 13,
+  },
   questionTitle: {
     margin: 0,
     fontSize: 21,
     letterSpacing: "-0.04em",
     color: "#111827",
+    wordBreak: "keep-all",
+  },
+  mobileQuestionTitle: {
+    fontSize: 19,
+    lineHeight: 1.35,
   },
   questionDescription: {
     margin: "7px 0 0",
@@ -1130,7 +1399,12 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 10,
   },
+  mobileOptionGrid: {
+    gridTemplateColumns: "1fr",
+    gap: 9,
+  },
   optionButton: {
+    width: "100%",
     minHeight: 92,
     textAlign: "left",
     border: "1px solid #e5e7eb",
@@ -1140,6 +1414,12 @@ const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
     color: "#111827",
     transition: "border 120ms ease, box-shadow 120ms ease, background 120ms ease",
+    boxSizing: "border-box",
+  },
+  mobileOptionButton: {
+    minHeight: "auto",
+    padding: 13,
+    borderRadius: 15,
   },
   optionButtonSelected: {
     border: "2px solid #2563eb",
@@ -1158,6 +1438,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15,
     fontWeight: 950,
     lineHeight: 1.35,
+    wordBreak: "keep-all",
   },
   selectedPill: {
     display: "inline-flex",
@@ -1185,6 +1466,11 @@ const styles: Record<string, CSSProperties> = {
     background: "#f8fafc",
     border: "1px solid #e2e8f0",
   },
+  mobileSummaryBox: {
+    marginTop: 18,
+    padding: 15,
+    borderRadius: 17,
+  },
   summaryKicker: {
     margin: "0 0 8px",
     color: "#2563eb",
@@ -1210,6 +1496,11 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 950,
     cursor: "pointer",
   },
+  mobileSubmitButton: {
+    height: 56,
+    borderRadius: 17,
+    fontSize: 15,
+  },
   messageBox: {
     marginTop: 16,
     padding: 15,
@@ -1218,6 +1509,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     lineHeight: 1.6,
     fontWeight: 800,
+    wordBreak: "keep-all",
   },
   footerNote: {
     margin: "14px 0 0",
@@ -1225,6 +1517,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     lineHeight: 1.6,
     textAlign: "center",
+    wordBreak: "keep-all",
   },
   successWrap: {
     display: "flex",
@@ -1237,6 +1530,10 @@ const styles: Record<string, CSSProperties> = {
     background:
       "radial-gradient(circle at top right, rgba(37,99,235,0.16), transparent 34%), #f8fafc",
     border: "1px solid #e2e8f0",
+  },
+  mobileSuccessHero: {
+    padding: 18,
+    borderRadius: 20,
   },
   successBadge: {
     display: "inline-block",
@@ -1254,6 +1551,11 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 32,
     lineHeight: 1.22,
     letterSpacing: "-0.06em",
+    wordBreak: "keep-all",
+  },
+  mobileSuccessTitle: {
+    fontSize: 25,
+    lineHeight: 1.3,
   },
   successDescription: {
     maxWidth: 820,
@@ -1262,6 +1564,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 16,
     lineHeight: 1.75,
     wordBreak: "keep-all",
+  },
+  mobileSuccessDescription: {
+    fontSize: 14,
+    lineHeight: 1.7,
   },
   successEmailBox: {
     display: "flex",
@@ -1273,6 +1579,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 16,
     background: "#ffffff",
     border: "1px solid #e5e7eb",
+    minWidth: 0,
   },
   successEmailLabel: {
     color: "#6b7280",
@@ -1283,11 +1590,15 @@ const styles: Record<string, CSSProperties> = {
     color: "#111827",
     fontSize: 15,
     fontWeight: 950,
+    wordBreak: "break-all",
   },
   resultGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
     gap: 12,
+  },
+  mobileResultGrid: {
+    gridTemplateColumns: "1fr",
   },
   resultCard: {
     padding: 16,
@@ -1318,6 +1629,10 @@ const styles: Record<string, CSSProperties> = {
     background: "#111827",
     color: "#ffffff",
   },
+  mobileNextStepBox: {
+    padding: 16,
+    borderRadius: 20,
+  },
   nextStepHeader: {
     marginBottom: 18,
   },
@@ -1332,6 +1647,9 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 24,
     lineHeight: 1.3,
     letterSpacing: "-0.04em",
+  },
+  mobileNextStepTitle: {
+    fontSize: 21,
   },
   nextStepList: {
     display: "flex",
@@ -1365,6 +1683,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 15,
     fontWeight: 950,
     lineHeight: 1.45,
+    wordBreak: "keep-all",
   },
   nextStepItemText: {
     margin: "5px 0 0",
