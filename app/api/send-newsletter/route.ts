@@ -77,6 +77,7 @@ type DeliveryLog = {
   subscriber_email: string | null;
   newsletter_item_id: number | null;
   status: string | null;
+  created_at: string | null;
 };
 
 type RequestBody = {
@@ -243,6 +244,58 @@ function isCategoryGroupKey(value: unknown): value is CategoryGroupKey {
 function normalizeValue(value: string | null | undefined) {
   if (!value) return "";
   return String(value).trim();
+}
+
+function getKoreaTodayRangeUtc() {
+  const now = new Date();
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const todayKorea = formatter.format(now);
+  const startKst = new Date(`${todayKorea}T00:00:00+09:00`);
+  const endKst = new Date(startKst);
+  endKst.setDate(endKst.getDate() + 1);
+
+  return {
+    todayKorea,
+    startUtc: startKst.toISOString(),
+    endUtc: endKst.toISOString(),
+  };
+}
+
+function hasSubscriberReceivedToday({
+  subscriber,
+  deliveryLogs,
+  startUtc,
+  endUtc,
+}: {
+  subscriber: Subscriber;
+  deliveryLogs: DeliveryLog[];
+  startUtc: string;
+  endUtc: string;
+}) {
+  const subscriberEmail = subscriber.email.toLowerCase();
+
+  return deliveryLogs.some((log) => {
+    if (log.status !== "sent") return false;
+    if (!log.created_at) return false;
+
+    const sameSubscriberId =
+      Boolean(log.subscriber_id) && log.subscriber_id === subscriber.id;
+
+    const sameSubscriberEmail =
+      Boolean(log.subscriber_email) &&
+      String(log.subscriber_email).toLowerCase() === subscriberEmail;
+
+    if (!sameSubscriberId && !sameSubscriberEmail) return false;
+
+    return log.created_at >= startUtc && log.created_at < endUtc;
+  });
 }
 
 function getReadableValue(value: string | null | undefined) {
@@ -1543,7 +1596,7 @@ async function fetchDeliveryLogs({
 
   const { data, error } = await supabase
     .from("newsletter_delivery_logs")
-    .select("subscriber_id, subscriber_email, newsletter_item_id, status")
+    .select("subscriber_id, subscriber_email, newsletter_item_id, status, created_at")
     .or(filters.join(","))
     .eq("status", "sent")
     .limit(5000);
@@ -1735,6 +1788,8 @@ export async function POST(request: Request) {
       subscriberEmails,
     });
 
+    const { todayKorea, startUtc, endUtc } = getKoreaTodayRangeUtc();
+
     const answersBySubscriberId = buildAnswersBySubscriberId(
       typedSubscribers,
       subscriberAnswers
@@ -1752,15 +1807,24 @@ export async function POST(request: Request) {
       let previewSkippedCount = 0;
 
       const previewDetails = typedSubscribers.map((subscriber) => {
-        const selectedScoredItems = pickScoredItemsForSubscriber({
-          items: typedNewsletterItems,
+        const alreadyReceivedToday = hasSubscriberReceivedToday({
           subscriber,
-          answersBySubscriberId,
-          targetsByItemId,
-          feedbackContext,
           deliveryLogs,
-          ignoreDeliveryHistory: false,
+          startUtc,
+          endUtc,
         });
+
+        const selectedScoredItems = alreadyReceivedToday
+          ? []
+          : pickScoredItemsForSubscriber({
+              items: typedNewsletterItems,
+              subscriber,
+              answersBySubscriberId,
+              targetsByItemId,
+              feedbackContext,
+              deliveryLogs,
+              ignoreDeliveryHistory: false,
+            });
 
         const alreadySentItemIds = Array.from(
           getAlreadySentItemIdsForSubscriber({
@@ -1782,13 +1846,15 @@ export async function POST(request: Request) {
           profileUrl: getProfileUrl(subscriber),
           answers: getSubscriberAnswers(subscriber, answersBySubscriberId),
           alreadySentItemIds,
+          alreadyReceivedToday,
           willSend: selectedScoredItems.length > 0,
           selectedItemIds: selectedScoredItems.map((entry) => entry.item.id),
           selectedItems: selectedScoredItems.map(buildPreviewItem),
-          skippedReason:
-            selectedScoredItems.length === 0
-              ? "이미 발송된 자료를 제외하면 보낼 수 있는 활성 자료가 없습니다."
-              : null,
+          skippedReason: alreadyReceivedToday
+            ? `${todayKorea}에 이미 발송된 구독자입니다.`
+            : selectedScoredItems.length === 0
+            ? "이미 발송된 자료를 제외하면 보낼 수 있는 활성 자료가 없습니다."
+            : null,
         };
       });
 
@@ -1803,6 +1869,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         mode: "preview",
+        todayKorea,
         message: `발송 전 미리보기 생성 완료: 발송 가능 ${previewSendableCount}명, 스킵 ${previewSkippedCount}명.`,
         totalSubscribers: typedSubscribers.length,
         totalActiveItems: typedNewsletterItems.length,
@@ -1881,6 +1948,7 @@ export async function POST(request: Request) {
     let successCount = 0;
     let failCount = 0;
     let skippedSubscriberCount = 0;
+    let skippedTodayCount = 0;
 
     const sentItemIds = new Set<number>();
     const failedReasons: string[] = [];
@@ -1896,6 +1964,22 @@ export async function POST(request: Request) {
     }[] = [];
 
     for (const subscriber of typedSubscribers) {
+      const alreadyReceivedToday = hasSubscriberReceivedToday({
+        subscriber,
+        deliveryLogs,
+        startUtc,
+        endUtc,
+      });
+
+      if (alreadyReceivedToday) {
+        skippedTodayCount += 1;
+        skippedSubscriberCount += 1;
+        failedReasons.push(
+          `${subscriber.email}: ${todayKorea}에 이미 발송된 구독자라서 건너뛰었습니다.`
+        );
+        continue;
+      }
+
       const selectedScoredItems = pickScoredItemsForSubscriber({
         items: typedNewsletterItems,
         subscriber,
@@ -1965,6 +2049,7 @@ export async function POST(request: Request) {
             subscriber_email: subscriber.email,
             newsletter_item_id: item.id,
             status: "sent",
+            created_at: new Date().toISOString(),
           });
         }
       } else {
@@ -1990,10 +2075,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       mode: "full",
-      message: `발송 완료: ${successCount}명에게 발송했습니다. 실패: ${failCount}명. 스킵: ${skippedSubscriberCount}명. 자료별 전역 is_sent는 변경하지 않았습니다.`,
+      message: `발송 완료: ${successCount}명에게 발송했습니다. 실패: ${failCount}명. 스킵: ${skippedSubscriberCount}명. 오늘 이미 받은 구독자: ${skippedTodayCount}명. 자료별 전역 is_sent는 변경하지 않았습니다.`,
+      todayKorea,
       successCount,
       failCount,
       skippedSubscriberCount,
+      skippedTodayCount,
       selectedItemIds: Array.from(sentItemIds),
       updatedItemIds: [],
       failedReasons,
