@@ -41,7 +41,6 @@ type NewsletterItem = {
 
   target_user_state: string | null;
   target_persona: string | null;
-
   target_ai_emotion: string | null;
   target_ai_intent: string | null;
   target_blocker: string | null;
@@ -80,19 +79,21 @@ type DeliveryLog = {
   created_at: string | null;
 };
 
+type DailySendLock = {
+  subscriber_id: string | null;
+  subscriber_email: string | null;
+  send_date_kst: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
 type RequestBody = {
   admin_secret?: string;
   mode?: "preview" | "test" | "full";
   test_email?: string;
 };
 
-type SendEmailResult = {
-  ok: boolean;
-  message: string;
-};
-
 type SubscriberAnswerMap = Record<CategoryGroupKey, string>;
-
 type ItemTargetMap = Record<CategoryGroupKey, string[]>;
 
 type ScoredItem = {
@@ -176,6 +177,15 @@ function getSiteUrl() {
   return `https://${siteUrl}`.replace(/\/$/, "");
 }
 
+async function readRequestBody(request: Request): Promise<RequestBody> {
+  try {
+    const body = await request.json();
+    return body || {};
+  } catch {
+    return {};
+  }
+}
+
 function getAdminSecretFromRequest(request: Request, body: RequestBody) {
   const headerSecret = request.headers.get("x-admin-secret");
 
@@ -223,13 +233,15 @@ function verifyAdminSecret(request: Request, body: RequestBody) {
   };
 }
 
-async function readRequestBody(request: Request): Promise<RequestBody> {
-  try {
-    const body = await request.json();
-    return body || {};
-  } catch {
-    return {};
-  }
+function getKoreaToday() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(new Date());
 }
 
 function isCategoryGroupKey(value: unknown): value is CategoryGroupKey {
@@ -246,56 +258,8 @@ function normalizeValue(value: string | null | undefined) {
   return String(value).trim();
 }
 
-function getKoreaTodayRangeUtc() {
-  const now = new Date();
-
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  const todayKorea = formatter.format(now);
-  const startKst = new Date(`${todayKorea}T00:00:00+09:00`);
-  const endKst = new Date(startKst);
-  endKst.setDate(endKst.getDate() + 1);
-
-  return {
-    todayKorea,
-    startUtc: startKst.toISOString(),
-    endUtc: endKst.toISOString(),
-  };
-}
-
-function hasSubscriberReceivedToday({
-  subscriber,
-  deliveryLogs,
-  startUtc,
-  endUtc,
-}: {
-  subscriber: Subscriber;
-  deliveryLogs: DeliveryLog[];
-  startUtc: string;
-  endUtc: string;
-}) {
-  const subscriberEmail = subscriber.email.toLowerCase();
-
-  return deliveryLogs.some((log) => {
-    if (log.status !== "sent") return false;
-    if (!log.created_at) return false;
-
-    const sameSubscriberId =
-      Boolean(log.subscriber_id) && log.subscriber_id === subscriber.id;
-
-    const sameSubscriberEmail =
-      Boolean(log.subscriber_email) &&
-      String(log.subscriber_email).toLowerCase() === subscriberEmail;
-
-    if (!sameSubscriberId && !sameSubscriberEmail) return false;
-
-    return log.created_at >= startUtc && log.created_at < endUtc;
-  });
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
 function getReadableValue(value: string | null | undefined) {
@@ -318,28 +282,6 @@ function getProfileUrl(subscriber: Subscriber) {
   params.set("email", subscriber.email);
 
   return `${getSiteUrl()}/profile?${params.toString()}`;
-}
-
-function buildProfileLinkHtml(subscriber: Subscriber) {
-  const profileUrl = escapeHtml(getProfileUrl(subscriber));
-
-  return `
-    <div style="margin-top:22px;padding:20px;border-radius:18px;background:#eff6ff;border:1px solid #bfdbfe;">
-      <p style="margin:0 0 8px;font-size:15px;font-weight:900;color:#1d4ed8;">
-        지금 상태가 바뀌었나요?
-      </p>
-      <p style="margin:0 0 14px;font-size:14px;line-height:1.75;color:#1e3a8a;">
-        AI에 대한 감정, 목적, 막히는 지점은 계속 바뀝니다. 지금 상태가 달라졌다면 재진단 화면에서 다시 설정하세요.
-        다음 브리프부터 새 상태가 추천 점수에 반영됩니다.
-      </p>
-      <a href="${profileUrl}" style="display:inline-block;padding:12px 16px;border-radius:13px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:900;">
-        내 상태 다시 설정하기
-      </a>
-      <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#64748b;">
-        같은 이메일로 제출하면 기존 구독자 정보가 업데이트됩니다.
-      </p>
-    </div>
-  `;
 }
 
 function getReadablePersona(subscriber: Subscriber) {
@@ -472,17 +414,87 @@ function countSharedTargets(a: ItemTargetMap, b: ItemTargetMap) {
   let count = 0;
 
   for (const groupKey of Object.keys(a) as CategoryGroupKey[]) {
-    const aValues = a[groupKey];
-    const bValues = b[groupKey];
-
-    for (const value of aValues) {
-      if (bValues.includes(value)) {
-        count += 1;
-      }
+    for (const value of a[groupKey]) {
+      if (b[groupKey].includes(value)) count += 1;
     }
   }
 
   return count;
+}
+
+function buildAnswersBySubscriberId(
+  subscribers: Subscriber[],
+  answers: SubscriberCategoryAnswer[]
+) {
+  const map: Record<string, SubscriberAnswerMap> = {};
+
+  for (const subscriber of subscribers) {
+    map[subscriber.id] = getEmptySubscriberAnswerMap();
+  }
+
+  for (const answer of answers) {
+    if (!isCategoryGroupKey(answer.group_key)) continue;
+
+    if (!map[answer.subscriber_id]) {
+      map[answer.subscriber_id] = getEmptySubscriberAnswerMap();
+    }
+
+    map[answer.subscriber_id][answer.group_key] = normalizeValue(
+      answer.option_value
+    );
+  }
+
+  return map;
+}
+
+function buildTargetsByItemId(targets: NewsletterItemCategoryTarget[]) {
+  const map: Record<number, ItemTargetMap> = {};
+
+  for (const target of targets) {
+    if (!isCategoryGroupKey(target.group_key)) continue;
+
+    if (!map[target.newsletter_item_id]) {
+      map[target.newsletter_item_id] = getEmptyItemTargetMap();
+    }
+
+    const value = normalizeValue(target.option_value);
+    if (!value) continue;
+
+    if (!map[target.newsletter_item_id][target.group_key].includes(value)) {
+      map[target.newsletter_item_id][target.group_key].push(value);
+    }
+  }
+
+  return map;
+}
+
+function buildFeedbacksBySubscriberKey(feedbacks: Feedback[]) {
+  const map: Record<string, Feedback[]> = {};
+
+  for (const feedback of feedbacks) {
+    if (feedback.subscriber_id) {
+      if (!map[feedback.subscriber_id]) map[feedback.subscriber_id] = [];
+      map[feedback.subscriber_id].push(feedback);
+    }
+
+    if (typeof feedback.subscriber_email === "string") {
+      const emailKey = normalizeEmail(feedback.subscriber_email);
+      if (!map[emailKey]) map[emailKey] = [];
+      map[emailKey].push(feedback);
+    }
+  }
+
+  return map;
+}
+
+function buildFeedbackItemsById(items: NewsletterItem[]) {
+  const map: Record<number, NewsletterItem> = {};
+
+  for (const item of items) {
+    map[item.id] = item;
+  }
+
+  return map;
 }
 
 function getSubscriberFeedbacks(
@@ -491,7 +503,7 @@ function getSubscriberFeedbacks(
 ) {
   const byId = feedbackContext.feedbacksBySubscriberKey[subscriber.id] || [];
   const byEmail =
-    feedbackContext.feedbacksBySubscriberKey[subscriber.email.toLowerCase()] ||
+    feedbackContext.feedbacksBySubscriberKey[normalizeEmail(subscriber.email)] ||
     [];
 
   const merged = [...byId, ...byEmail];
@@ -642,7 +654,6 @@ function getMatchScore({
     subscriber,
     answersBySubscriberId
   );
-
   const itemTargets = getItemTargets(item, targetsByItemId);
 
   if (
@@ -737,17 +748,18 @@ function getAlreadySentItemIdsForSubscriber({
   deliveryLogs: DeliveryLog[];
 }) {
   const sentIds = new Set<number>();
+  const subscriberEmail = normalizeEmail(subscriber.email);
 
   for (const log of deliveryLogs) {
     if (log.status !== "sent") continue;
     if (!log.newsletter_item_id) continue;
 
     const sameSubscriberId =
-      log.subscriber_id && log.subscriber_id === subscriber.id;
+      typeof log.subscriber_id === "string" && log.subscriber_id === subscriber.id;
 
     const sameSubscriberEmail =
-      log.subscriber_email &&
-      log.subscriber_email.toLowerCase() === subscriber.email.toLowerCase();
+      typeof log.subscriber_email === "string" &&
+      normalizeEmail(log.subscriber_email) === subscriberEmail;
 
     if (sameSubscriberId || sameSubscriberEmail) {
       sentIds.add(log.newsletter_item_id);
@@ -809,6 +821,35 @@ function pickScoredItemsForSubscriber({
   return scoredItems.slice(0, 3);
 }
 
+function hasSubscriberReceivedToday({
+  subscriber,
+  dailySendLocks,
+  todayKorea,
+}: {
+  subscriber: Subscriber;
+  dailySendLocks: DailySendLock[];
+  todayKorea: string;
+}) {
+  const subscriberEmail = normalizeEmail(subscriber.email);
+
+  return dailySendLocks.some((lock) => {
+    if (lock.status !== "sent") return false;
+    if (!lock.send_date_kst) return false;
+
+    const sameSubscriberId =
+      typeof lock.subscriber_id === "string" &&
+      lock.subscriber_id === subscriber.id;
+
+    const sameSubscriberEmail =
+      typeof lock.subscriber_email === "string" &&
+      normalizeEmail(lock.subscriber_email) === subscriberEmail;
+
+    if (!sameSubscriberId && !sameSubscriberEmail) return false;
+
+    return lock.send_date_kst === todayKorea;
+  });
+}
+
 function buildSubscriberStatusText(
   subscriber: Subscriber,
   answersBySubscriberId: Record<string, SubscriberAnswerMap>
@@ -827,80 +868,6 @@ function buildSubscriberStatusText(
   }
 
   return lines.join(" / ");
-}
-
-function buildSubscriberStatusCardsHtml({
-  subscriber,
-  answersBySubscriberId,
-}: {
-  subscriber: Subscriber;
-  answersBySubscriberId: Record<string, SubscriberAnswerMap>;
-}) {
-  const answers = getSubscriberAnswers(subscriber, answersBySubscriberId);
-
-  const cards = [
-    {
-      label: "AI 감정",
-      value: getReadableValue(answers.ai_emotion) || "미분류",
-    },
-    {
-      label: "하고 싶은 것",
-      value: getReadableValue(answers.ai_intent) || "미분류",
-    },
-    {
-      label: "막히는 지점",
-      value: getReadableValue(answers.blocker) || "미분류",
-    },
-    {
-      label: "가능한 시간",
-      value: getReadableValue(answers.action_time) || "미분류",
-    },
-  ];
-
-  return `
-    <div style="margin-top:18px;">
-      <p style="margin:0 0 10px;font-size:14px;font-weight:800;color:#111827;">
-        오늘 브리프가 기준으로 삼은 내 상태
-      </p>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
-        ${cards
-          .map(
-            (card) => `
-              <div style="padding:12px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb;">
-                <p style="margin:0 0 5px;font-size:12px;font-weight:800;color:#64748b;">
-                  ${escapeHtml(card.label)}
-                </p>
-                <p style="margin:0;font-size:14px;font-weight:800;line-height:1.45;color:#111827;">
-                  ${escapeHtml(card.value)}
-                </p>
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
-}
-
-function buildOneActionIntroHtml(subscriber: Subscriber, answers: SubscriberAnswerMap) {
-  const actionTime = getReadableValue(answers.action_time) || "짧은 시간";
-  const blocker = getReadableValue(answers.blocker) || "막히는 지점";
-
-  return `
-    <div style="margin-top:18px;padding:18px;border-radius:16px;background:#ecfdf5;border:1px solid #a7f3d0;">
-      <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#047857;">
-        오늘의 사용법
-      </p>
-      <p style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
-        전부 읽으려고 하지 마세요. 지금은 <strong>${escapeHtml(
-          blocker
-        )}</strong>을 줄이는 것이 우선입니다.
-        아래 자료 중 하나를 고르고, <strong>${escapeHtml(
-          actionTime
-        )}</strong> 안에 끝낼 수 있는 Action hint 하나만 실행해보세요.
-      </p>
-    </div>
-  `;
 }
 
 function buildFeedbackUrl({
@@ -935,74 +902,33 @@ function buildFeedbackButtons({
   subscriber: Subscriber;
   item: NewsletterItem;
 }) {
-  const reactionButtons = [
+  const buttons = [
     {
       type: "useful" as const,
       label: "좋음",
       helper: "비슷한 자료를 더 받을게요",
-      bg: "#eff6ff",
-      color: "#1d4ed8",
-      border: "#bfdbfe",
     },
     {
       type: "deeper" as const,
       label: "더 깊게",
       helper: "이 방향을 더 심화할게요",
-      bg: "#f5f3ff",
-      color: "#6d28d9",
-      border: "#ddd6fe",
     },
     {
       type: "not_relevant" as const,
       label: "별로",
       helper: "다음 추천에서 낮출게요",
-      bg: "#fef2f2",
-      color: "#b91c1c",
-      border: "#fecaca",
     },
-  ];
-
-  const executionButtons = [
     {
       type: "action_done" as const,
       label: "실행해봄",
       helper: "실행 가능한 방향을 더 줄게요",
-      bg: "#ecfdf5",
-      color: "#047857",
-      border: "#a7f3d0",
     },
     {
       type: "action_not_done" as const,
       label: "실행안해봄",
       helper: "난이도와 시간을 다시 맞출게요",
-      bg: "#f9fafb",
-      color: "#374151",
-      border: "#d1d5db",
     },
   ];
-
-  const renderButton = (
-    button:
-      | (typeof reactionButtons)[number]
-      | (typeof executionButtons)[number]
-  ) => {
-    const url = escapeHtml(
-      buildFeedbackUrl({
-        subscriber,
-        item,
-        type: button.type,
-      })
-    );
-
-    return `
-      <a href="${url}" style="display:inline-block;padding:10px 12px;border-radius:14px;background:${button.bg};color:${button.color};border:1px solid ${button.border};font-size:13px;font-weight:800;text-decoration:none;">
-        ${button.label}
-        <span style="display:block;margin-top:3px;font-size:11px;font-weight:600;color:${button.color};opacity:0.82;">
-          ${button.helper}
-        </span>
-      </a>
-    `;
-  };
 
   return `
     <div style="margin-top:18px;padding:16px;border-radius:14px;background:#f9fafb;border:1px solid #e5e7eb;">
@@ -1012,23 +938,27 @@ function buildFeedbackButtons({
       <p style="margin:0 0 14px;font-size:13px;line-height:1.65;color:#6b7280;">
         하나만 눌러도 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${buttons
+          .map((button) => {
+            const url = escapeHtml(
+              buildFeedbackUrl({
+                subscriber,
+                item,
+                type: button.type,
+              })
+            );
 
-      <div style="margin-top:8px;">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:800;color:#374151;">
-          자료 평가는 어땠나요?
-        </p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${reactionButtons.map(renderButton).join("")}
-        </div>
-      </div>
-
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:800;color:#374151;">
-          실제로 해봤나요?
-        </p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${executionButtons.map(renderButton).join("")}
-        </div>
+            return `
+              <a href="${url}" style="display:inline-block;padding:10px 12px;border-radius:14px;background:#ffffff;color:#111827;border:1px solid #d1d5db;font-size:13px;font-weight:800;text-decoration:none;">
+                ${escapeHtml(button.label)}
+                <span style="display:block;margin-top:3px;font-size:11px;font-weight:600;color:#6b7280;">
+                  ${escapeHtml(button.helper)}
+                </span>
+              </a>
+            `;
+          })
+          .join("")}
       </div>
     </div>
   `;
@@ -1064,6 +994,28 @@ function buildMatchedReasonHtml(scoredItem: ScoredItem) {
   `;
 }
 
+function buildProfileLinkHtml(subscriber: Subscriber) {
+  const profileUrl = escapeHtml(getProfileUrl(subscriber));
+
+  return `
+    <div style="margin-top:22px;padding:20px;border-radius:18px;background:#eff6ff;border:1px solid #bfdbfe;">
+      <p style="margin:0 0 8px;font-size:15px;font-weight:900;color:#1d4ed8;">
+        지금 상태가 바뀌었나요?
+      </p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.75;color:#1e3a8a;">
+        AI에 대한 감정, 목적, 막히는 지점은 계속 바뀝니다. 지금 상태가 달라졌다면 재진단 화면에서 다시 설정하세요.
+        다음 브리프부터 새 상태가 추천 점수에 반영됩니다.
+      </p>
+      <a href="${profileUrl}" style="display:inline-block;padding:12px 16px;border-radius:13px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:900;">
+        내 상태 다시 설정하기
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#64748b;">
+        같은 이메일로 제출하면 기존 구독자 정보가 업데이트됩니다.
+      </p>
+    </div>
+  `;
+}
+
 function buildNewsletterHtml({
   subscriber,
   scoredItems,
@@ -1080,13 +1032,6 @@ function buildNewsletterHtml({
     buildSubscriberStatusText(subscriber, answersBySubscriberId)
   );
   const modeLabel = mode === "test" ? "TEST BRIEFING" : "AI-FU 실행 브리프";
-  const answers = getSubscriberAnswers(subscriber, answersBySubscriberId);
-  const statusCardsHtml = buildSubscriberStatusCardsHtml({
-    subscriber,
-    answersBySubscriberId,
-  });
-  const oneActionIntroHtml = buildOneActionIntroHtml(subscriber, answers);
-  const profileLinkHtml = buildProfileLinkHtml(subscriber);
 
   const itemHtml = scoredItems
     .map((scoredItem, index) => {
@@ -1166,29 +1111,17 @@ function buildNewsletterHtml({
               : ""
           }
 
-          ${
-            actionHint
-              ? `
-                <div style="margin-top:16px;padding:16px;border-radius:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
-                  <p style="margin:0 0 7px;font-size:14px;font-weight:900;color:#047857;">
-                    오늘 딱 하나 할 일
-                  </p>
-                  <p style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
-                    ${actionHint}
-                  </p>
-                </div>
-              `
-              : `
-                <div style="margin-top:16px;padding:16px;border-radius:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
-                  <p style="margin:0 0 7px;font-size:14px;font-weight:900;color:#047857;">
-                    오늘 딱 하나 할 일
-                  </p>
-                  <p style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
-                    이 자료의 제목과 핵심 요약만 보고, 내 일이나 생활에 적용할 수 있는 장면을 하나만 적어보세요.
-                  </p>
-                </div>
-              `
-          }
+          <div style="margin-top:16px;padding:16px;border-radius:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
+            <p style="margin:0 0 7px;font-size:14px;font-weight:900;color:#047857;">
+              오늘 딱 하나 할 일
+            </p>
+            <p style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
+              ${
+                actionHint ||
+                "이 자료의 제목과 핵심 요약만 보고, 내 일이나 생활에 적용할 수 있는 장면을 하나만 적어보세요."
+              }
+            </p>
+          </div>
 
           ${
             safeSourceUrl
@@ -1216,7 +1149,7 @@ function buildNewsletterHtml({
             ? `
               <div style="margin-bottom:16px;padding:12px 16px;border-radius:12px;background:#fef3c7;border:1px solid #f59e0b;">
                 <p style="margin:0;font-size:14px;font-weight:800;color:#92400e;">
-                  테스트 발송입니다. 실제 구독자 발송 로그와 자료 발송 상태는 변경하지 않습니다.
+                  테스트 발송입니다. 실제 구독자 발송 로그와 하루 발송 제한 잠금은 변경하지 않습니다.
                 </p>
               </div>
             `
@@ -1247,22 +1180,18 @@ function buildNewsletterHtml({
             AI 소식을 많이 보내는 대신, 지금 당신에게 필요한 자료를 고르고
             “왜 이 자료가 왔는지”와 “오늘 딱 하나 할 일”을 함께 보냅니다.
           </p>
-
-          ${statusCardsHtml}
-          ${oneActionIntroHtml}
         </div>
 
         ${itemHtml}
 
-        ${profileLinkHtml}
+        ${buildProfileLinkHtml(subscriber)}
 
         <div style="margin-top:24px;padding:18px;border-radius:16px;background:#ffffff;border:1px solid #e5e7eb;">
           <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#111827;">
             다음 브리프를 더 잘 맞추는 방법
           </p>
           <p style="margin:0;font-size:13px;line-height:1.75;color:#6b7280;">
-            각 자료 아래의 피드백 버튼을 하나만 눌러주세요. “좋음 / 더 깊게 / 별로”는 자료 방향에,
-            “실행해봄 / 실행안해봄”은 Action hint의 난이도와 시간 조절에 반영됩니다.
+            각 자료 아래의 피드백 버튼을 하나만 눌러주세요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
           </p>
           <p style="margin:10px 0 0;font-size:13px;line-height:1.7;color:#9ca3af;">
             이 메일은 AI-FU MVP 테스트/운영 발송입니다.
@@ -1281,7 +1210,7 @@ async function sendEmail({
   to: string;
   subject: string;
   html: string;
-}): Promise<SendEmailResult> {
+}) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail =
     process.env.RESEND_FROM_EMAIL || "AI-FU <onboarding@resend.dev>";
@@ -1335,106 +1264,6 @@ function makeTestSubscriber(testEmail: string, baseSubscriber?: Subscriber) {
     blocker: baseSubscriber?.blocker || "too_much_info",
     action_time: baseSubscriber?.action_time || "30min",
     persona_type: baseSubscriber?.persona_type || "Test",
-  };
-}
-
-function buildAnswersBySubscriberId(
-  subscribers: Subscriber[],
-  answers: SubscriberCategoryAnswer[]
-) {
-  const map: Record<string, SubscriberAnswerMap> = {};
-
-  for (const subscriber of subscribers) {
-    map[subscriber.id] = getEmptySubscriberAnswerMap();
-  }
-
-  for (const answer of answers) {
-    if (!isCategoryGroupKey(answer.group_key)) continue;
-
-    if (!map[answer.subscriber_id]) {
-      map[answer.subscriber_id] = getEmptySubscriberAnswerMap();
-    }
-
-    map[answer.subscriber_id][answer.group_key] = normalizeValue(
-      answer.option_value
-    );
-  }
-
-  return map;
-}
-
-function buildTargetsByItemId(targets: NewsletterItemCategoryTarget[]) {
-  const map: Record<number, ItemTargetMap> = {};
-
-  for (const target of targets) {
-    if (!isCategoryGroupKey(target.group_key)) continue;
-
-    if (!map[target.newsletter_item_id]) {
-      map[target.newsletter_item_id] = getEmptyItemTargetMap();
-    }
-
-    const value = normalizeValue(target.option_value);
-
-    if (!value) continue;
-
-    if (!map[target.newsletter_item_id][target.group_key].includes(value)) {
-      map[target.newsletter_item_id][target.group_key].push(value);
-    }
-  }
-
-  return map;
-}
-
-function buildFeedbacksBySubscriberKey(feedbacks: Feedback[]) {
-  const map: Record<string, Feedback[]> = {};
-
-  for (const feedback of feedbacks) {
-    if (feedback.subscriber_id) {
-      if (!map[feedback.subscriber_id]) {
-        map[feedback.subscriber_id] = [];
-      }
-
-      map[feedback.subscriber_id].push(feedback);
-    }
-
-    if (feedback.subscriber_email) {
-      const emailKey = feedback.subscriber_email.toLowerCase();
-
-      if (!map[emailKey]) {
-        map[emailKey] = [];
-      }
-
-      map[emailKey].push(feedback);
-    }
-  }
-
-  return map;
-}
-
-function buildFeedbackItemsById(items: NewsletterItem[]) {
-  const map: Record<number, NewsletterItem> = {};
-
-  for (const item of items) {
-    map[item.id] = item;
-  }
-
-  return map;
-}
-
-function buildPreviewItem(entry: ScoredItem) {
-  return {
-    id: entry.item.id,
-    title: entry.item.title,
-    category: entry.item.category,
-    difficulty: entry.item.difficulty,
-    sourceType: entry.item.source_type,
-    stance: entry.item.stance,
-    sourceUrl: getItemSourceUrl(entry.item),
-    mainSummary: getItemMainSummary(entry.item),
-    balanceSummary: entry.item.balance_summary,
-    actionHint: entry.item.action_hint,
-    score: entry.score,
-    matchedReasons: entry.matchedReasons,
   };
 }
 
@@ -1608,6 +1437,105 @@ async function fetchDeliveryLogs({
   return (data ?? []) as DeliveryLog[];
 }
 
+async function fetchDailySendLocks({
+  supabase,
+  todayKorea,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  todayKorea: string;
+}) {
+  const { data, error } = await supabase
+    .from("newsletter_daily_send_locks")
+    .select("subscriber_id, subscriber_email, send_date_kst, status, created_at")
+    .eq("send_date_kst", todayKorea)
+    .eq("status", "sent")
+    .limit(5000);
+
+  if (error) {
+    throw new Error(`newsletter_daily_send_locks 조회 실패: ${error.message}`);
+  }
+
+  return (data ?? []) as DailySendLock[];
+}
+
+async function createDailySendLock({
+  supabase,
+  subscriber,
+  todayKorea,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  subscriber: Subscriber;
+  todayKorea: string;
+}) {
+  const { data, error } = await supabase
+    .from("newsletter_daily_send_locks")
+    .insert({
+      subscriber_id: subscriber.id,
+      subscriber_email: normalizeEmail(subscriber.email),
+      send_date_kst: todayKorea,
+      status: "sent",
+    })
+    .select("subscriber_id, subscriber_email, send_date_kst, status, created_at")
+    .single();
+
+  if (!error) {
+    return {
+      ok: true,
+      alreadyExists: false,
+      lock: data as DailySendLock,
+      message: "created",
+    };
+  }
+
+  const isDuplicate =
+    error.code === "23505" ||
+    error.message.toLowerCase().includes("duplicate key");
+
+  if (isDuplicate) {
+    return {
+      ok: false,
+      alreadyExists: true,
+      lock: null,
+      message: "already sent today",
+    };
+  }
+
+  return {
+    ok: false,
+    alreadyExists: false,
+    lock: null,
+    message: error.message,
+  };
+}
+
+async function deleteDailySendLock({
+  supabase,
+  subscriber,
+  todayKorea,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  subscriber: Subscriber;
+  todayKorea: string;
+}) {
+  const { error } = await supabase
+    .from("newsletter_daily_send_locks")
+    .delete()
+    .eq("send_date_kst", todayKorea)
+    .eq("subscriber_email", normalizeEmail(subscriber.email));
+
+  if (error) {
+    return {
+      ok: false,
+      message: error.message,
+    };
+  }
+
+  return {
+    ok: true,
+    message: "deleted",
+  };
+}
+
 async function buildFeedbackContext({
   supabase,
   subscribers,
@@ -1617,7 +1545,7 @@ async function buildFeedbackContext({
 }): Promise<FeedbackContext> {
   const subscriberIds = subscribers.map((subscriber) => subscriber.id);
   const subscriberEmails = subscribers.map((subscriber) =>
-    subscriber.email.toLowerCase()
+    normalizeEmail(subscriber.email)
   );
 
   const feedbacks = await fetchRecentFeedbacks({
@@ -1651,6 +1579,23 @@ async function buildFeedbackContext({
   };
 }
 
+function buildPreviewItem(entry: ScoredItem) {
+  return {
+    id: entry.item.id,
+    title: entry.item.title,
+    category: entry.item.category,
+    difficulty: entry.item.difficulty,
+    sourceType: entry.item.source_type,
+    stance: entry.item.stance,
+    sourceUrl: getItemSourceUrl(entry.item),
+    mainSummary: getItemMainSummary(entry.item),
+    balanceSummary: entry.item.balance_summary,
+    actionHint: entry.item.action_hint,
+    score: entry.score,
+    matchedReasons: entry.matchedReasons,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await readRequestBody(request);
@@ -1681,6 +1626,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
+    const todayKorea = getKoreaToday();
 
     const { data: subscribers, error: subscribersError } = await supabase
       .from("subscribers")
@@ -1768,7 +1714,7 @@ export async function POST(request: Request) {
 
     const subscriberIds = typedSubscribers.map((subscriber) => subscriber.id);
     const subscriberEmails = typedSubscribers.map((subscriber) =>
-      subscriber.email.toLowerCase()
+      normalizeEmail(subscriber.email)
     );
     const itemIds = typedNewsletterItems.map((item) => item.id);
 
@@ -1788,7 +1734,10 @@ export async function POST(request: Request) {
       subscriberEmails,
     });
 
-    const { todayKorea, startUtc, endUtc } = getKoreaTodayRangeUtc();
+    const dailySendLocks = await fetchDailySendLocks({
+      supabase,
+      todayKorea,
+    });
 
     const answersBySubscriberId = buildAnswersBySubscriberId(
       typedSubscribers,
@@ -1809,9 +1758,8 @@ export async function POST(request: Request) {
       const previewDetails = typedSubscribers.map((subscriber) => {
         const alreadyReceivedToday = hasSubscriberReceivedToday({
           subscriber,
-          deliveryLogs,
-          startUtc,
-          endUtc,
+          dailySendLocks,
+          todayKorea,
         });
 
         const selectedScoredItems = alreadyReceivedToday
@@ -1877,7 +1825,7 @@ export async function POST(request: Request) {
         previewSkippedCount,
         selectedItemIds: uniquePreviewItemIds,
         previewDetails,
-        note: "미리보기 모드이므로 이메일 발송, newsletter_delivery_logs 저장, 자료 상태 변경을 하지 않았습니다.",
+        note: "미리보기 모드이므로 이메일 발송, newsletter_daily_send_locks 저장, newsletter_delivery_logs 저장, 자료 상태 변경을 하지 않았습니다.",
       });
     }
 
@@ -1941,7 +1889,7 @@ export async function POST(request: Request) {
           score: entry.score,
           matchedReasons: entry.matchedReasons,
         })),
-        note: "테스트 발송이므로 newsletter_delivery_logs와 자료 발송 상태는 변경하지 않았습니다.",
+        note: "테스트 발송이므로 newsletter_daily_send_locks, newsletter_delivery_logs, 자료 발송 상태는 변경하지 않았습니다.",
       });
     }
 
@@ -1966,9 +1914,8 @@ export async function POST(request: Request) {
     for (const subscriber of typedSubscribers) {
       const alreadyReceivedToday = hasSubscriberReceivedToday({
         subscriber,
-        deliveryLogs,
-        startUtc,
-        endUtc,
+        dailySendLocks,
+        todayKorea,
       });
 
       if (alreadyReceivedToday) {
@@ -1998,6 +1945,29 @@ export async function POST(request: Request) {
         continue;
       }
 
+      const lockResult = await createDailySendLock({
+        supabase,
+        subscriber,
+        todayKorea,
+      });
+
+      if (!lockResult.ok) {
+        if (lockResult.alreadyExists) {
+          skippedTodayCount += 1;
+          skippedSubscriberCount += 1;
+          failedReasons.push(
+            `${subscriber.email}: ${todayKorea}에 이미 발송된 구독자라서 건너뛰었습니다.`
+          );
+          continue;
+        }
+
+        failCount += 1;
+        failedReasons.push(
+          `${subscriber.email}: daily send lock 생성 실패: ${lockResult.message}`
+        );
+        continue;
+      }
+
       const html = buildNewsletterHtml({
         subscriber,
         scoredItems: selectedScoredItems,
@@ -2013,6 +1983,14 @@ export async function POST(request: Request) {
 
       if (sendResult.ok) {
         successCount += 1;
+
+        dailySendLocks.push({
+          subscriber_id: subscriber.id,
+          subscriber_email: normalizeEmail(subscriber.email),
+          send_date_kst: todayKorea,
+          status: "sent",
+          created_at: new Date().toISOString(),
+        });
 
         const scoreDetails = selectedScoredItems.map((entry) => ({
           item_id: entry.item.id,
@@ -2056,6 +2034,18 @@ export async function POST(request: Request) {
         failCount += 1;
         failedReasons.push(`${subscriber.email}: ${sendResult.message}`);
 
+        const deleteLockResult = await deleteDailySendLock({
+          supabase,
+          subscriber,
+          todayKorea,
+        });
+
+        if (!deleteLockResult.ok) {
+          failedReasons.push(
+            `${subscriber.email}: failed daily lock delete error: ${deleteLockResult.message}`
+          );
+        }
+
         const { error: logError } = await supabase
           .from("newsletter_delivery_logs")
           .insert({
@@ -2085,7 +2075,7 @@ export async function POST(request: Request) {
       updatedItemIds: [],
       failedReasons,
       sentDetails,
-      note: "A-4 재발송 정책 적용: 자료 자체는 재사용 가능하며, 같은 구독자에게 이미 sent 로그가 있는 자료만 제외합니다. D-6 적용: 이메일 하단에 /profile 재진단 링크가 포함됩니다.",
+      note: "A-4 재발송 정책 적용: 자료 자체는 재사용 가능하며, 같은 구독자에게 이미 sent 로그가 있는 자료만 제외합니다. D-1 수정 적용: 하루 1회 메일 제한은 newsletter_daily_send_locks로 관리하고, newsletter_delivery_logs는 자료별 발송 기록으로 유지합니다. D-6 적용: 이메일 하단에 /profile 재진단 링크가 포함됩니다.",
     });
   } catch (error) {
     const message =
