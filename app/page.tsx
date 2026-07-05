@@ -3,6 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
+
+const notoSansKr = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+});
+
+const notoSerifKr = Noto_Serif_KR({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "900"],
+});
 
 type CategoryGroupKey =
   | "ai_emotion"
@@ -39,6 +50,15 @@ type SelectedSummary = {
   aiIntent: string;
   blocker: string;
   actionTime: string;
+};
+
+type ApiResult = {
+  ok?: boolean;
+  message?: string;
+  code?: string;
+  feedback_count?: number;
+  required_feedback_count?: number;
+  rawText?: string;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -282,12 +302,16 @@ const GROUP_STEP_LABELS: Record<CategoryGroupKey, string> = {
 const GROUP_HELP_TEXTS: Record<CategoryGroupKey, string> = {
   ai_emotion: "정답은 없습니다. 지금 가장 가까운 느낌 하나만 고르면 됩니다.",
   ai_intent: "목표가 뚜렷하지 않아도 괜찮습니다. ‘아직 모름’도 중요한 신호입니다.",
-  blocker: "AI-FU는 이 막힘을 기준으로 자료와 실행 단계를 줄입니다.",
+  blocker: "이 막힘을 기준으로 자료와 실행 단계를 줄입니다.",
   action_time: "선택한 시간 안에 끝낼 수 있는 행동 제안을 함께 보냅니다.",
 };
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
 function buildBundles(groups: CategoryGroup[], options: CategoryOption[]) {
@@ -305,7 +329,7 @@ function buildBundles(groups: CategoryGroup[], options: CategoryOption[]) {
     }));
 }
 
-async function readJsonResponse(response: Response) {
+async function readJsonResponse(response: Response): Promise<ApiResult> {
   const text = await response.text();
 
   if (!text) {
@@ -316,7 +340,7 @@ async function readJsonResponse(response: Response) {
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as ApiResult;
   } catch {
     return {
       ok: false,
@@ -461,17 +485,12 @@ export default function HomePage() {
     setMessage("");
     setIsSuccess(false);
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
 
     if (!isValidEmail(normalizedEmail)) {
       setMessage("올바른 이메일을 입력해주세요.");
       return;
     }
-
-    const aiEmotion = selections.ai_emotion;
-    const aiIntent = selections.ai_intent;
-    const blocker = selections.blocker;
-    const actionTime = selections.action_time;
 
     setSubmitting(true);
 
@@ -485,17 +504,17 @@ export default function HomePage() {
           email: normalizedEmail,
           job_role: jobRole.trim() || null,
           difficulty: difficulty || "easy",
-          ai_emotion: aiEmotion,
-          ai_intent: aiIntent,
-          blocker,
-          action_time: actionTime,
+          ai_emotion: selections.ai_emotion,
+          ai_intent: selections.ai_intent,
+          blocker: selections.blocker,
+          action_time: selections.action_time,
         }),
       });
 
       const result = await readJsonResponse(response);
 
       if (!response.ok || !result.ok) {
-        setMessage(result.message || "구독 저장 중 오류가 발생했습니다.");
+        setMessage(result.message || "브리핑 설정 저장 중 오류가 발생했습니다.");
         return;
       }
 
@@ -503,7 +522,7 @@ export default function HomePage() {
       setIsSuccess(true);
       setMessage(
         result.message ||
-          "신청이 완료되었습니다. 같은 이메일로 다시 신청한 경우 기존 진단 정보가 업데이트됩니다."
+          "신청이 완료되었습니다. 같은 이메일로 다시 신청한 경우 기존 설정이 업데이트됩니다."
       );
 
       window.setTimeout(() => {
@@ -521,7 +540,13 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ ...styles.page, ...(isMobile ? styles.mobilePage : {}) }}>
+    <main
+      className={notoSansKr.className}
+      style={{ ...styles.page, ...(isMobile ? styles.mobilePage : {}) }}
+    >
+      <div style={styles.monetLayer} />
+      <div style={styles.darkLayer} />
+
       <section
         style={{ ...styles.shell, ...(isMobile ? styles.mobileShell : {}) }}
       >
@@ -535,7 +560,7 @@ export default function HomePage() {
             }}
           >
             <p style={{ ...styles.badge, ...(isMobile ? styles.mobileBadge : {}) }}>
-              AI-FU MVP
+              Personal AI Briefing
             </p>
 
             <h1
@@ -544,9 +569,11 @@ export default function HomePage() {
                 ...(isMobile ? styles.mobileTitle : {}),
               }}
             >
-              AI를 알아야 할 것 같은데,
+              알고는 있지만,
               <br />
-              어디서부터 시작할지 모르겠다면
+              아직 만들지는
+              <br />
+              못했다.
             </h1>
 
             <p
@@ -555,9 +582,18 @@ export default function HomePage() {
                 ...(isMobile ? styles.mobileDescription : {}),
               }}
             >
-              AI-FU는 더 많은 뉴스를 보내는 서비스가 아닙니다. 지금 당신의
-              AI 감정, 목적, 막히는 지점, 가능한 시간을 기준으로 이번 주에
-              실제로 해볼 수 있는 작은 실행 브리프를 보내드립니다.
+              AI 시대가 온다는 말은 충분히 들었습니다. 이제 필요한 것은 더 많은
+              정보가 아니라, 당신이 직접 해보는 첫 번째 행동입니다.
+            </p>
+
+            <p
+              style={{
+                ...styles.descriptionSmall,
+                ...(isMobile ? styles.mobileDescriptionSmall : {}),
+              }}
+            >
+              당신의 감정, 목적, 막히는 지점, 가능한 시간을 바탕으로 이번 주
+              실행할 수 있는 개인 맞춤 AI 브리핑을 보냅니다.
             </p>
 
             <div
@@ -566,33 +602,18 @@ export default function HomePage() {
                 ...(isMobile ? styles.mobilePromiseGrid : {}),
               }}
             >
-              <div
-                style={{
-                  ...styles.promiseItem,
-                  ...(isMobile ? styles.mobilePromiseItem : {}),
-                }}
-              >
-                <strong style={styles.promiseTitle}>진단</strong>
-                <span style={styles.promiseText}>AI에 대한 현재 상태 확인</span>
-              </div>
-              <div
-                style={{
-                  ...styles.promiseItem,
-                  ...(isMobile ? styles.mobilePromiseItem : {}),
-                }}
-              >
-                <strong style={styles.promiseTitle}>해석</strong>
-                <span style={styles.promiseText}>나에게 왜 필요한지 설명</span>
-              </div>
-              <div
-                style={{
-                  ...styles.promiseItem,
-                  ...(isMobile ? styles.mobilePromiseItem : {}),
-                }}
-              >
-                <strong style={styles.promiseTitle}>실행</strong>
-                <span style={styles.promiseText}>이번 주 가능한 행동 제안</span>
-              </div>
+              <PromiseItem number="01" title="상태">
+                AI에 대한 지금의 감정
+              </PromiseItem>
+              <PromiseItem number="02" title="방향">
+                당신에게 필요한 다음 주제
+              </PromiseItem>
+              <PromiseItem number="03" title="실행">
+                이번 주 해볼 수 있는 한 가지
+              </PromiseItem>
+              <PromiseItem number="04" title="반응">
+                피드백으로 정교해지는 추천
+              </PromiseItem>
             </div>
           </div>
 
@@ -602,33 +623,36 @@ export default function HomePage() {
               ...(isMobile ? styles.mobilePreviewPanel : {}),
             }}
           >
-            <p style={styles.previewEyebrow}>구독 후 받게 될 것</p>
-            <h2 style={styles.previewTitle}>개인 맞춤 AI 실행 브리프</h2>
+            <p style={styles.previewEyebrow}>받게 되는 것</p>
+            <h2 style={styles.previewTitle}>개인 맞춤 AI 브리핑</h2>
 
             <div style={styles.previewList}>
-              <div style={styles.previewRow}>
-                <span style={styles.previewDot} />
-                <span>지금 볼 만한 AI 자료</span>
-              </div>
-              <div style={styles.previewRow}>
-                <span style={styles.previewDot} />
-                <span>이 자료가 나에게 온 이유</span>
-              </div>
-              <div style={styles.previewRow}>
-                <span style={styles.previewDot} />
-                <span>10분·30분·2시간 단위 실행 제안</span>
-              </div>
-              <div style={styles.previewRow}>
-                <span style={styles.previewDot} />
-                <span>좋음 / 더 깊게 / 별로 피드백 반영</span>
-              </div>
+              <PreviewRow>지금 볼 만한 AI 자료</PreviewRow>
+              <PreviewRow>이 자료가 필요한 이유</PreviewRow>
+              <PreviewRow>10분·30분·2시간 실행 제안</PreviewRow>
+              <PreviewRow>좋음 / 더 깊게 / 별로 피드백 반영</PreviewRow>
+              <PreviewRow>반응이 쌓일수록 더 정확해지는 추천</PreviewRow>
             </div>
 
             <p style={styles.previewNote}>
-              목표는 “많이 아는 것”이 아니라, 압도되지 않고 하나라도 해보는
-              것입니다.
+              목표는 AI를 많이 아는 것이 아닙니다. AI와 함께 무언가를
+              만들어내는 것입니다.
             </p>
           </aside>
+        </section>
+
+        <section
+          style={{
+            ...styles.statementBox,
+            ...(isMobile ? styles.mobileStatementBox : {}),
+          }}
+        >
+          <p style={styles.statementText}>
+            정보는 이미 많습니다. 문제는 시작점입니다.
+            <br />
+            Personal AI Briefing은 막연한 관심을 이번 주의 작은 실행으로
+            바꿉니다.
+          </p>
         </section>
 
         <section
@@ -652,14 +676,14 @@ export default function HomePage() {
                 }}
               >
                 <div>
-                  <p style={styles.cardKicker}>무료 진단 구독</p>
+                  <p style={styles.cardKicker}>무료 브리핑 설정</p>
                   <h2
                     style={{
                       ...styles.cardTitle,
                       ...(isMobile ? styles.mobileCardTitle : {}),
                     }}
                   >
-                    내 AI-FU 브리핑 설정하기
+                    내 AI 브리핑 시작하기
                   </h2>
                 </div>
                 <p style={styles.cardSubtext}>
@@ -759,16 +783,16 @@ export default function HomePage() {
                   }}
                   disabled={submitting}
                 >
-                  {submitting ? "저장 중..." : "내 AI-FU 브리핑 신청하기"}
+                  {submitting ? "저장 중..." : "내 AI 브리핑 시작하기"}
                 </button>
 
                 {message && (
                   <div
                     style={{
                       ...styles.messageBox,
-                      background: "#fef2f2",
-                      borderColor: "#fecaca",
-                      color: "#b91c1c",
+                      background: "#fff1f2",
+                      borderColor: "#fecdd3",
+                      color: "#be123c",
                     }}
                   >
                     {message}
@@ -782,8 +806,37 @@ export default function HomePage() {
             </>
           )}
         </section>
+
+        <BuildSection isMobile={isMobile} />
       </section>
     </main>
+  );
+}
+
+function PromiseItem({
+  number,
+  title,
+  children,
+}: {
+  number: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div style={styles.promiseItem}>
+      <span style={styles.promiseNumber}>{number}</span>
+      <strong style={styles.promiseTitle}>{title}</strong>
+      <span style={styles.promiseText}>{children}</span>
+    </div>
+  );
+}
+
+function PreviewRow({ children }: { children: ReactNode }) {
+  return (
+    <div style={styles.previewRow}>
+      <span style={styles.previewDot} />
+      <span>{children}</span>
+    </div>
   );
 }
 
@@ -818,7 +871,7 @@ function SuccessOnboarding({
             ...(isMobile ? styles.mobileSuccessTitle : {}),
           }}
         >
-          이제 AI-FU가 당신에게 맞춰집니다.
+          이제 브리핑이 당신에게 맞춰집니다.
         </h2>
         <p
           style={{
@@ -826,8 +879,8 @@ function SuccessOnboarding({
             ...(isMobile ? styles.mobileSuccessDescription : {}),
           }}
         >
-          입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 해석, 실행 제안이
-          맞춤화됩니다. 첫 브리프를 받은 뒤 피드백을 누를수록 추천 정확도가 더
+          입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 이유 설명, 실행 제안이
+          맞춤화됩니다. 첫 브리핑을 받은 뒤 피드백을 누를수록 추천 정확도가 더
           좋아집니다.
         </p>
 
@@ -879,14 +932,14 @@ function SuccessOnboarding({
               ...(isMobile ? styles.mobileNextStepTitle : {}),
             }}
           >
-            첫 브리프를 받기 전 준비
+            첫 브리핑을 받기 전 준비
           </h3>
         </div>
 
         <div style={styles.nextStepList}>
           <NextStepItem number="1">
             <strong style={styles.nextStepItemTitle}>
-              메일함에서 AI-FU를 확인하세요
+              메일함에서 브리핑을 확인하세요
             </strong>
             <p style={styles.nextStepItemText}>
               첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
@@ -899,8 +952,8 @@ function SuccessOnboarding({
               자료를 전부 읽으려고 하지 마세요
             </strong>
             <p style={styles.nextStepItemText}>
-              AI-FU의 목표는 정보 과식이 아니라 선택입니다. 브리프에서
-              “왜 이 자료가 왔는지”와 “이번 주 행동”만 먼저 보면 됩니다.
+              목표는 정보 과식이 아니라 선택입니다. “왜 이 자료가 왔는지”와
+              “이번 주 실행”만 먼저 보면 됩니다.
             </p>
           </NextStepItem>
 
@@ -910,19 +963,21 @@ function SuccessOnboarding({
             </strong>
             <p style={styles.nextStepItemText}>
               좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
-              브리프가 더 개인화됩니다.
+              브리핑이 더 개인화됩니다.
             </p>
           </NextStepItem>
         </div>
       </section>
 
-      <section style={styles.briefExampleBox}>
-        <p style={styles.briefExampleKicker}>앞으로 이런 식으로 받게 됩니다</p>
-        <div style={styles.briefExample}>
-          <strong style={styles.briefExampleTitle}>
-            “정보가 너무 많아 피곤한 사람을 위한 이번 주 AI 브리프”
+      <section style={styles.briefingExampleBox}>
+        <p style={styles.briefingExampleKicker}>
+          앞으로 이런 식으로 받게 됩니다
+        </p>
+        <div style={styles.briefingExample}>
+          <strong style={styles.briefingExampleTitle}>
+            “정보가 너무 많아 피곤한 사람을 위한 이번 주 AI 브리핑”
           </strong>
-          <p style={styles.briefExampleText}>
+          <p style={styles.briefingExampleText}>
             오늘의 자료 1개 → 나에게 온 이유 → 핵심 요약 → 이번 주{" "}
             {summary.actionTime} 안에 해볼 행동 1개
           </p>
@@ -1042,21 +1097,311 @@ function QuestionBlock({
   );
 }
 
+function BuildSection({ isMobile }: { isMobile: boolean }) {
+  const [buildEmail, setBuildEmail] = useState("");
+  const [buildName, setBuildName] = useState("");
+  const [wantToBuild, setWantToBuild] = useState("");
+  const [blockedPoint, setBlockedPoint] = useState("");
+  const [aiExperience, setAiExperience] = useState("");
+  const [helpType, setHelpType] = useState("");
+
+  const [buildSubmitting, setBuildSubmitting] = useState(false);
+  const [buildMessage, setBuildMessage] = useState("");
+  const [buildSuccess, setBuildSuccess] = useState(false);
+  const [feedbackCount, setFeedbackCount] = useState<number | null>(null);
+  const [requiredFeedbackCount, setRequiredFeedbackCount] = useState(50);
+
+  async function handleBuildSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setBuildMessage("");
+    setBuildSuccess(false);
+    setFeedbackCount(null);
+
+    const normalizedEmail = normalizeEmail(buildEmail);
+
+    if (!isValidEmail(normalizedEmail)) {
+      setBuildMessage("올바른 이메일을 입력해주세요.");
+      return;
+    }
+
+    if (!wantToBuild.trim()) {
+      setBuildMessage("무엇을 만들고 싶은지 입력해주세요.");
+      return;
+    }
+
+    if (!blockedPoint.trim()) {
+      setBuildMessage("현재 어디서 막혀 있는지 입력해주세요.");
+      return;
+    }
+
+    setBuildSubmitting(true);
+
+    try {
+      const response = await fetch("/api/build-consultation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          name: buildName.trim() || null,
+          want_to_build: wantToBuild.trim(),
+          blocked_point: blockedPoint.trim(),
+          ai_experience: aiExperience.trim() || null,
+          help_type: helpType.trim() || null,
+        }),
+      });
+
+      const result = await readJsonResponse(response);
+
+      if (typeof result.feedback_count === "number") {
+        setFeedbackCount(result.feedback_count);
+      }
+
+      if (typeof result.required_feedback_count === "number") {
+        setRequiredFeedbackCount(result.required_feedback_count);
+      }
+
+      if (!response.ok || !result.ok) {
+        setBuildMessage(
+          result.message || "상담 신청 처리 중 오류가 발생했습니다."
+        );
+        return;
+      }
+
+      setBuildSuccess(true);
+      setBuildMessage(
+        result.message ||
+          "Personal AI Build 상담 신청이 완료되었습니다. 입력한 내용을 확인한 뒤 연락드릴 수 있습니다."
+      );
+
+      setBuildName("");
+      setWantToBuild("");
+      setBlockedPoint("");
+      setAiExperience("");
+      setHelpType("");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      setBuildMessage(`상담 신청 중 오류가 발생했습니다: ${errorMessage}`);
+    } finally {
+      setBuildSubmitting(false);
+    }
+  }
+
+  return (
+    <section
+      style={{
+        ...styles.buildSection,
+        ...(isMobile ? styles.mobileBuildSection : {}),
+      }}
+    >
+      <div
+        style={{
+          ...styles.buildHeader,
+          ...(isMobile ? styles.mobileBuildHeader : {}),
+        }}
+      >
+        <div>
+          <p style={styles.buildKicker}>Personal AI Build</p>
+          <h2
+            style={{
+              ...styles.buildTitle,
+              ...(isMobile ? styles.mobileBuildTitle : {}),
+            }}
+          >
+            충분히 반응이 쌓이면,
+            <br />
+            이제 직접 만들 차례입니다.
+          </h2>
+        </div>
+
+        <div style={styles.buildLockBox}>
+          <span style={styles.buildLockNumber}>50+</span>
+          <span style={styles.buildLockText}>
+            피드백 50개 이상부터 신청 가능
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          ...styles.buildGrid,
+          ...(isMobile ? styles.mobileBuildGrid : {}),
+        }}
+      >
+        <div style={styles.buildTextBox}>
+          <p style={styles.buildParagraph}>
+            Personal AI Build는 AI로 직접 무언가를 만들고 싶은 사람을 위한 1:1
+            방향 상담입니다.
+          </p>
+          <p style={styles.buildParagraph}>
+            사이트, 자동화, 글쓰기, 콘텐츠, 작은 서비스, 사업 아이디어까지.
+            막연한 생각을 실제 실행 순서로 바꾸는 과정입니다.
+          </p>
+          <p style={styles.buildMuted}>
+            아직은 충분한 피드백이 쌓인 사람에게만 열립니다. 당신이 어떤 자료에
+            반응했고, 무엇을 어려워했고, 실제로 무엇을 해봤는지 알아야 더 정확한
+            방향을 제안할 수 있기 때문입니다.
+          </p>
+
+          <div style={styles.buildConditionBox}>
+            <span style={styles.buildConditionLabel}>신청 조건</span>
+            <span style={styles.buildConditionText}>
+              피드백 {requiredFeedbackCount}개 이상
+            </span>
+            <p style={styles.buildConditionNote}>
+              같은 이메일로 남긴 자료 평가와 실행 여부 피드백을 기준으로
+              확인합니다.
+              {feedbackCount !== null
+                ? ` 현재 확인된 피드백은 ${feedbackCount}개입니다.`
+                : ""}
+            </p>
+          </div>
+        </div>
+
+        <form style={styles.buildFormMock} onSubmit={handleBuildSubmit}>
+          <p style={styles.buildFormTitle}>상담 신청</p>
+
+          <label style={styles.buildLabel}>
+            이메일
+            <input
+              style={styles.buildInput}
+              type="email"
+              value={buildEmail}
+              onChange={(event) => setBuildEmail(event.target.value)}
+              placeholder="briefing@example.com"
+              required
+            />
+          </label>
+
+          <label style={styles.buildLabel}>
+            이름
+            <input
+              style={styles.buildInput}
+              type="text"
+              value={buildName}
+              onChange={(event) => setBuildName(event.target.value)}
+              placeholder="선택 입력"
+            />
+          </label>
+
+          <label style={styles.buildLabel}>
+            무엇을 만들고 싶나요?
+            <textarea
+              style={styles.buildTextarea}
+              value={wantToBuild}
+              onChange={(event) => setWantToBuild(event.target.value)}
+              placeholder="예: 개인 웹사이트, 자동화 도구, 콘텐츠 채널, 작은 서비스, 사업 아이디어"
+              required
+            />
+          </label>
+
+          <label style={styles.buildLabel}>
+            현재 어디서 막혀 있나요?
+            <textarea
+              style={styles.buildTextarea}
+              value={blockedPoint}
+              onChange={(event) => setBlockedPoint(event.target.value)}
+              placeholder="예: 아이디어는 있는데 구현 순서를 모르겠음, 어떤 AI 도구를 써야 할지 모르겠음"
+              required
+            />
+          </label>
+
+          <label style={styles.buildLabel}>
+            AI를 어느 정도 활용해봤나요?
+            <textarea
+              style={styles.buildTextareaSmall}
+              value={aiExperience}
+              onChange={(event) => setAiExperience(event.target.value)}
+              placeholder="예: ChatGPT로 글쓰기만 해봄, 사이트 제작은 처음, 자동화는 안 해봄"
+            />
+          </label>
+
+          <label style={styles.buildLabel}>
+            어떤 도움을 받고 싶나요?
+            <textarea
+              style={styles.buildTextareaSmall}
+              value={helpType}
+              onChange={(event) => setHelpType(event.target.value)}
+              placeholder="예: 실행 순서 정리, 도구 추천, 첫 화면 설계, 기능 우선순위 정리"
+            />
+          </label>
+
+          <button
+            type="submit"
+            style={{
+              ...styles.buildSubmitButton,
+              opacity: buildSubmitting ? 0.65 : 1,
+            }}
+            disabled={buildSubmitting}
+          >
+            {buildSubmitting ? "신청 확인 중..." : "상담 신청하기"}
+          </button>
+
+          {buildMessage && (
+            <div
+              style={{
+                ...styles.buildMessageBox,
+                ...(buildSuccess
+                  ? styles.buildMessageSuccess
+                  : styles.buildMessageError),
+              }}
+            >
+              {buildMessage}
+            </div>
+          )}
+
+          <p style={styles.buildFormNote}>
+            피드백이 부족하면 신청은 저장되지 않습니다. 먼저 브리핑에 반응을
+            남겨주세요.
+          </p>
+        </form>
+      </div>
+    </section>
+  );
+}
+
 const styles: Record<string, CSSProperties> = {
   page: {
+    position: "relative",
     minHeight: "100vh",
-    background:
-      "radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 32%), linear-gradient(135deg, #020617 0%, #0f172a 45%, #111827 100%)",
-    padding: "48px 18px",
-    color: "#ffffff",
+    padding: "46px 18px",
+    color: "#f4f0e8",
+    background: "#050806",
     overflowX: "hidden",
   },
   mobilePage: {
-    padding: "26px 14px",
+    padding: "24px 12px",
+  },
+  monetLayer: {
+    position: "fixed",
+    inset: 0,
+    backgroundImage: "url('/monet-bridge.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    opacity: 0.92,
+    filter: "blur(0.2px) saturate(1.18) contrast(1.12) brightness(1.08)",
+    transform: "scale(1.03)",
+    zIndex: 0,
+    pointerEvents: "none",
+  },
+  darkLayer: {
+    position: "fixed",
+    inset: 0,
+    background:
+      "linear-gradient(90deg, rgba(3, 7, 6, 0.66) 0%, rgba(5, 12, 10, 0.36) 42%, rgba(3, 7, 6, 0.58) 100%), radial-gradient(circle at 22% 12%, rgba(230, 231, 204, 0.08), transparent 28%)",
+    zIndex: 1,
+    pointerEvents: "none",
   },
   shell: {
+    position: "relative",
+    zIndex: 2,
     width: "100%",
-    maxWidth: 1120,
+    maxWidth: 1180,
     margin: "0 auto",
   },
   mobileShell: {
@@ -1064,191 +1409,242 @@ const styles: Record<string, CSSProperties> = {
   },
   hero: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1.25fr) minmax(300px, 0.75fr)",
-    gap: 24,
+    gridTemplateColumns: "minmax(0, 1.12fr) minmax(320px, 0.88fr)",
+    gap: 28,
     alignItems: "stretch",
-    marginBottom: 26,
+    marginBottom: 24,
   },
   mobileHero: {
     display: "flex",
     flexDirection: "column",
-    gap: 18,
-    marginBottom: 18,
+    gap: 16,
+    marginBottom: 16,
   },
   heroText: {
-    padding: "18px 0",
+    padding: "12px 0 0",
     minWidth: 0,
   },
   mobileHeroText: {
-    padding: "4px 0 0",
+    padding: "2px 0 0",
     width: "100%",
   },
   badge: {
     display: "inline-block",
-    margin: "0 0 18px",
-    padding: "8px 14px",
-    borderRadius: 999,
-    background: "rgba(59,130,246,0.16)",
-    border: "1px solid rgba(147,197,253,0.42)",
-    color: "#bfdbfe",
+    margin: "0 0 24px",
+    padding: "8px 0",
+    borderTop: "1px solid rgba(244, 240, 232, 0.72)",
+    borderBottom: "1px solid rgba(244, 240, 232, 0.72)",
+    color: "#f4f0e8",
     fontSize: 14,
-    fontWeight: 900,
+    fontWeight: 700,
+    letterSpacing: "0.01em",
   },
   mobileBadge: {
-    marginBottom: 14,
+    marginBottom: 16,
     fontSize: 12,
-    padding: "7px 11px",
   },
   title: {
     margin: 0,
-    fontSize: "clamp(36px, 5vw, 62px)",
-    lineHeight: 1.08,
+    maxWidth: 820,
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: "clamp(52px, 7.1vw, 94px)",
+    lineHeight: 1.18,
     letterSpacing: "-0.075em",
     wordBreak: "keep-all",
+    color: "#fbf4df",
+    fontWeight: 600,
+    textShadow: "0 22px 56px rgba(0,0,0,0.48)",
   },
   mobileTitle: {
-    fontSize: 38,
-    lineHeight: 1.14,
-    letterSpacing: "-0.055em",
+    fontSize: 46,
+    lineHeight: 1.2,
+    letterSpacing: "-0.065em",
     maxWidth: "100%",
-    wordBreak: "keep-all",
-    overflowWrap: "normal",
   },
   description: {
-    maxWidth: 780,
-    margin: "22px 0 0",
-    color: "#dbeafe",
+    maxWidth: 760,
+    margin: "34px 0 0",
+    color: "#f4f0e8",
     fontSize: 18,
-    lineHeight: 1.78,
+    lineHeight: 1.95,
+    fontWeight: 500,
     wordBreak: "keep-all",
+    textShadow: "0 8px 24px rgba(0,0,0,0.4)",
   },
   mobileDescription: {
-    marginTop: 16,
+    marginTop: 20,
     fontSize: 15,
-    lineHeight: 1.72,
+    lineHeight: 1.8,
     maxWidth: "100%",
+  },
+  descriptionSmall: {
+    maxWidth: 760,
+    margin: "14px 0 0",
+    color: "rgba(244, 240, 232, 0.78)",
+    fontSize: 15,
+    lineHeight: 1.9,
+    fontWeight: 400,
     wordBreak: "keep-all",
-    overflowWrap: "normal",
+  },
+  mobileDescriptionSmall: {
+    fontSize: 14,
+    lineHeight: 1.74,
   },
   promiseGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: 12,
-    marginTop: 28,
-    maxWidth: 680,
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 0,
+    marginTop: 42,
+    maxWidth: 850,
+    borderTop: "1px solid rgba(230, 231, 204, 0.3)",
+    borderLeft: "1px solid rgba(230, 231, 204, 0.3)",
+    background: "rgba(5, 15, 12, 0.34)",
+    backdropFilter: "blur(4px)",
   },
   mobilePromiseGrid: {
-    gridTemplateColumns: "1fr",
-    gap: 10,
-    marginTop: 18,
+    gridTemplateColumns: "1fr 1fr",
+    marginTop: 24,
     maxWidth: "100%",
   },
   promiseItem: {
     padding: 16,
-    borderRadius: 18,
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    borderRight: "1px solid rgba(230, 231, 204, 0.3)",
+    borderBottom: "1px solid rgba(230, 231, 204, 0.3)",
     minWidth: 0,
   },
-  mobilePromiseItem: {
-    padding: 14,
+  promiseNumber: {
+    display: "block",
+    marginBottom: 22,
+    color: "#dce6b8",
+    fontSize: 12,
+    fontWeight: 700,
   },
   promiseTitle: {
     display: "block",
-    marginBottom: 6,
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: 950,
+    marginBottom: 7,
+    color: "#f7f1df",
+    fontSize: 17,
+    fontWeight: 700,
   },
   promiseText: {
     display: "block",
-    color: "#cbd5e1",
+    color: "rgba(244, 240, 232, 0.78)",
     fontSize: 13,
-    lineHeight: 1.55,
+    lineHeight: 1.62,
     wordBreak: "keep-all",
   },
   previewPanel: {
     alignSelf: "end",
-    padding: 24,
-    borderRadius: 28,
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.16)",
-    boxShadow: "0 22px 60px rgba(0,0,0,0.22)",
-    backdropFilter: "blur(14px)",
+    padding: 28,
+    borderRadius: 0,
+    background:
+      "linear-gradient(145deg, rgba(14, 28, 23, 0.72), rgba(13, 19, 24, 0.68))",
+    border: "1px solid rgba(230, 231, 204, 0.3)",
+    boxShadow: "18px 18px 0 rgba(217, 225, 178, 0.08)",
+    backdropFilter: "blur(7px)",
     minWidth: 0,
   },
   mobilePreviewPanel: {
     alignSelf: "stretch",
     padding: 18,
-    borderRadius: 22,
     width: "100%",
     boxSizing: "border-box",
+    boxShadow: "8px 8px 0 rgba(217, 225, 178, 0.08)",
   },
   previewEyebrow: {
-    margin: "0 0 8px",
-    color: "#93c5fd",
+    margin: "0 0 10px",
+    color: "#dce6b8",
     fontSize: 13,
-    fontWeight: 900,
+    fontWeight: 700,
   },
   previewTitle: {
     margin: 0,
-    color: "#ffffff",
-    fontSize: 24,
-    lineHeight: 1.25,
-    letterSpacing: "-0.04em",
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 30,
+    lineHeight: 1.42,
+    letterSpacing: "-0.055em",
+    fontWeight: 600,
     wordBreak: "keep-all",
   },
   previewList: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
-    marginTop: 20,
+    gap: 13,
+    marginTop: 24,
   },
   previewRow: {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
-    color: "#e5e7eb",
+    color: "rgba(244, 240, 232, 0.88)",
     fontSize: 14,
-    lineHeight: 1.6,
+    lineHeight: 1.68,
     wordBreak: "keep-all",
   },
   previewDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    background: "#60a5fa",
-    marginTop: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 0,
+    background: "#dce6b8",
+    marginTop: 8,
     flex: "0 0 auto",
   },
   previewNote: {
-    margin: "20px 0 0",
-    paddingTop: 18,
-    borderTop: "1px solid rgba(255,255,255,0.13)",
-    color: "#cbd5e1",
+    margin: "24px 0 0",
+    paddingTop: 20,
+    borderTop: "1px solid rgba(230, 231, 204, 0.22)",
+    color: "rgba(244, 240, 232, 0.72)",
     fontSize: 13,
-    lineHeight: 1.65,
+    lineHeight: 1.82,
     wordBreak: "keep-all",
   },
+  statementBox: {
+    marginBottom: 24,
+    padding: "30px 34px",
+    borderTop: "1px solid rgba(230, 231, 204, 0.32)",
+    borderBottom: "1px solid rgba(230, 231, 204, 0.32)",
+    background:
+      "linear-gradient(90deg, rgba(3, 8, 7, 0.44), rgba(17, 47, 33, 0.2), rgba(3, 8, 7, 0.38))",
+    backdropFilter: "blur(4px)",
+  },
+  mobileStatementBox: {
+    padding: "20px 18px",
+  },
+  statementText: {
+    margin: 0,
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 26,
+    lineHeight: 1.82,
+    letterSpacing: "-0.055em",
+    fontWeight: 600,
+    wordBreak: "keep-all",
+    textShadow: "0 10px 24px rgba(0,0,0,0.38)",
+  },
   card: {
-    padding: 28,
-    borderRadius: 30,
-    background: "#ffffff",
-    color: "#111827",
-    boxShadow: "0 24px 70px rgba(0,0,0,0.34)",
+    padding: 30,
+    borderRadius: 0,
+    background: "rgba(247, 241, 223, 0.94)",
+    color: "#07100c",
+    boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
+    border: "1px solid rgba(247, 241, 223, 0.72)",
     width: "100%",
     boxSizing: "border-box",
+    marginBottom: 24,
+    backdropFilter: "blur(10px)",
   },
   mobileCard: {
     padding: 16,
-    borderRadius: 22,
   },
   cardHeader: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.8fr)",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.7fr)",
     gap: 18,
     alignItems: "end",
-    marginBottom: 24,
+    marginBottom: 26,
+    paddingBottom: 20,
+    borderBottom: "1px solid rgba(7, 16, 12, 0.16)",
   },
   mobileCardHeader: {
     display: "flex",
@@ -1259,33 +1655,35 @@ const styles: Record<string, CSSProperties> = {
   },
   cardKicker: {
     margin: "0 0 8px",
-    color: "#2563eb",
+    color: "#203428",
     fontSize: 13,
-    fontWeight: 950,
+    fontWeight: 700,
   },
   cardTitle: {
     margin: 0,
-    color: "#111827",
-    fontSize: 30,
-    lineHeight: 1.25,
-    letterSpacing: "-0.055em",
+    color: "#07100c",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 38,
+    lineHeight: 1.32,
+    letterSpacing: "-0.06em",
+    fontWeight: 600,
     wordBreak: "keep-all",
   },
   mobileCardTitle: {
-    fontSize: 24,
-    lineHeight: 1.3,
+    fontSize: 27,
+    lineHeight: 1.32,
   },
   cardSubtext: {
     margin: 0,
-    color: "#6b7280",
+    color: "rgba(7, 16, 12, 0.62)",
     fontSize: 14,
-    lineHeight: 1.65,
+    lineHeight: 1.78,
     wordBreak: "keep-all",
   },
   formBlock: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 16,
+    gap: 14,
     marginBottom: 24,
   },
   mobileFormBlock: {
@@ -1298,30 +1696,30 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: 9,
     fontSize: 14,
-    fontWeight: 900,
-    color: "#111827",
+    fontWeight: 700,
+    color: "#07100c",
     minWidth: 0,
   },
   input: {
     width: "100%",
-    height: 52,
-    borderRadius: 15,
-    border: "1px solid #d1d5db",
+    height: 54,
+    borderRadius: 0,
+    border: "1px solid rgba(7, 16, 12, 0.24)",
     padding: "0 14px",
     fontSize: 15,
-    color: "#111827",
-    background: "#ffffff",
+    color: "#07100c",
+    background: "#fffdf4",
     outline: "none",
     boxSizing: "border-box",
   },
   loadingText: {
     margin: "4px 0 20px",
     padding: 14,
-    borderRadius: 14,
-    background: "#f8fafc",
-    color: "#64748b",
+    borderRadius: 0,
+    background: "rgba(7, 16, 12, 0.05)",
+    color: "rgba(7, 16, 12, 0.62)",
     fontSize: 14,
-    lineHeight: 1.6,
+    lineHeight: 1.7,
     wordBreak: "keep-all",
   },
   questionStack: {
@@ -1331,14 +1729,13 @@ const styles: Record<string, CSSProperties> = {
   },
   questionBlock: {
     padding: 20,
-    borderRadius: 22,
-    border: "1px solid #e5e7eb",
-    background: "#f9fafb",
+    borderRadius: 0,
+    border: "1px solid rgba(7, 16, 12, 0.18)",
+    background: "#fffdf4",
     minWidth: 0,
   },
   mobileQuestionBlock: {
     padding: 14,
-    borderRadius: 18,
   },
   questionHeader: {
     display: "flex",
@@ -1350,48 +1747,49 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
   },
   stepBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#111827",
-    color: "#ffffff",
+    background: "#0b1711",
+    color: "#dce6b8",
     fontSize: 14,
-    fontWeight: 950,
+    fontWeight: 700,
     flex: "0 0 auto",
   },
   mobileStepBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
     fontSize: 13,
   },
   questionTitle: {
     margin: 0,
-    fontSize: 21,
-    letterSpacing: "-0.04em",
-    color: "#111827",
+    fontSize: 22,
+    letterSpacing: "-0.03em",
+    lineHeight: 1.34,
+    color: "#07100c",
+    fontWeight: 700,
     wordBreak: "keep-all",
   },
   mobileQuestionTitle: {
     fontSize: 19,
-    lineHeight: 1.35,
+    lineHeight: 1.38,
   },
   questionDescription: {
     margin: "7px 0 0",
-    color: "#4b5563",
+    color: "rgba(7, 16, 12, 0.64)",
     fontSize: 14,
-    lineHeight: 1.6,
+    lineHeight: 1.72,
     wordBreak: "keep-all",
   },
   questionHelp: {
     margin: "7px 0 0",
-    color: "#2563eb",
+    color: "#32685d",
     fontSize: 13,
-    lineHeight: 1.55,
-    fontWeight: 800,
+    lineHeight: 1.65,
+    fontWeight: 700,
     wordBreak: "keep-all",
   },
   optionGrid: {
@@ -1405,26 +1803,25 @@ const styles: Record<string, CSSProperties> = {
   },
   optionButton: {
     width: "100%",
-    minHeight: 92,
+    minHeight: 94,
     textAlign: "left",
-    border: "1px solid #e5e7eb",
-    borderRadius: 17,
-    background: "#ffffff",
+    border: "1px solid rgba(7, 16, 12, 0.16)",
+    borderRadius: 0,
+    background: "#f7f1df",
     padding: 14,
     cursor: "pointer",
-    color: "#111827",
+    color: "#07100c",
     transition: "border 120ms ease, box-shadow 120ms ease, background 120ms ease",
     boxSizing: "border-box",
   },
   mobileOptionButton: {
     minHeight: "auto",
     padding: 13,
-    borderRadius: 15,
   },
   optionButtonSelected: {
-    border: "2px solid #2563eb",
-    background: "#eff6ff",
-    boxShadow: "0 0 0 3px rgba(37,99,235,0.12)",
+    border: "2px solid #0b1711",
+    background: "#eef0d2",
+    boxShadow: "5px 5px 0 rgba(11, 23, 17, 0.16)",
   },
   optionTopLine: {
     display: "flex",
@@ -1436,8 +1833,8 @@ const styles: Record<string, CSSProperties> = {
   optionLabel: {
     display: "block",
     fontSize: 15,
-    fontWeight: 950,
-    lineHeight: 1.35,
+    fontWeight: 700,
+    lineHeight: 1.42,
     wordBreak: "keep-all",
   },
   selectedPill: {
@@ -1445,77 +1842,76 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     padding: "4px 7px",
-    borderRadius: 999,
-    background: "#2563eb",
-    color: "#ffffff",
+    borderRadius: 0,
+    background: "#0b1711",
+    color: "#dce6b8",
     fontSize: 11,
-    fontWeight: 900,
+    fontWeight: 700,
     flex: "0 0 auto",
   },
   optionDescription: {
     display: "block",
     fontSize: 13,
-    lineHeight: 1.55,
-    color: "#6b7280",
+    lineHeight: 1.62,
+    color: "rgba(7, 16, 12, 0.62)",
     wordBreak: "keep-all",
   },
   summaryBox: {
     marginTop: 22,
     padding: 18,
-    borderRadius: 20,
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
+    borderRadius: 0,
+    background: "#0b1711",
+    border: "1px solid #0b1711",
+    color: "#f7f1df",
   },
   mobileSummaryBox: {
     marginTop: 18,
     padding: 15,
-    borderRadius: 17,
   },
   summaryKicker: {
     margin: "0 0 8px",
-    color: "#2563eb",
+    color: "#dce6b8",
     fontSize: 13,
-    fontWeight: 950,
+    fontWeight: 700,
   },
   summaryText: {
     margin: 0,
-    color: "#111827",
+    color: "#f7f1df",
     fontSize: 15,
-    lineHeight: 1.75,
+    lineHeight: 1.82,
     wordBreak: "keep-all",
   },
   submitButton: {
     width: "100%",
-    height: 60,
+    height: 62,
     border: "none",
-    borderRadius: 19,
-    background: "#111827",
-    color: "#ffffff",
+    borderRadius: 0,
+    background: "#0b1711",
+    color: "#dce6b8",
     marginTop: 22,
     fontSize: 17,
-    fontWeight: 950,
+    fontWeight: 700,
     cursor: "pointer",
   },
   mobileSubmitButton: {
     height: 56,
-    borderRadius: 17,
     fontSize: 15,
   },
   messageBox: {
     marginTop: 16,
     padding: 15,
-    borderRadius: 15,
+    borderRadius: 0,
     border: "1px solid",
     fontSize: 14,
-    lineHeight: 1.6,
-    fontWeight: 800,
+    lineHeight: 1.7,
+    fontWeight: 700,
     wordBreak: "keep-all",
   },
   footerNote: {
     margin: "14px 0 0",
-    color: "#6b7280",
+    color: "rgba(7, 16, 12, 0.56)",
     fontSize: 13,
-    lineHeight: 1.6,
+    lineHeight: 1.68,
     textAlign: "center",
     wordBreak: "keep-all",
   },
@@ -1526,48 +1922,48 @@ const styles: Record<string, CSSProperties> = {
   },
   successHero: {
     padding: 26,
-    borderRadius: 26,
-    background:
-      "radial-gradient(circle at top right, rgba(37,99,235,0.16), transparent 34%), #f8fafc",
-    border: "1px solid #e2e8f0",
+    borderRadius: 0,
+    background: "#0b1711",
+    border: "1px solid #0b1711",
   },
   mobileSuccessHero: {
     padding: 18,
-    borderRadius: 20,
   },
   successBadge: {
     display: "inline-block",
     margin: "0 0 12px",
-    padding: "7px 12px",
-    borderRadius: 999,
-    background: "#dcfce7",
-    color: "#15803d",
+    padding: "7px 10px",
+    borderRadius: 0,
+    background: "#dce6b8",
+    color: "#0b1711",
     fontSize: 13,
-    fontWeight: 950,
+    fontWeight: 700,
   },
   successTitle: {
     margin: 0,
-    color: "#111827",
-    fontSize: 32,
-    lineHeight: 1.22,
-    letterSpacing: "-0.06em",
+    color: "#f7f1df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 36,
+    lineHeight: 1.34,
+    letterSpacing: "-0.055em",
+    fontWeight: 600,
     wordBreak: "keep-all",
   },
   mobileSuccessTitle: {
-    fontSize: 25,
-    lineHeight: 1.3,
+    fontSize: 26,
+    lineHeight: 1.34,
   },
   successDescription: {
     maxWidth: 820,
     margin: "14px 0 0",
-    color: "#4b5563",
+    color: "rgba(247, 241, 223, 0.72)",
     fontSize: 16,
-    lineHeight: 1.75,
+    lineHeight: 1.82,
     wordBreak: "keep-all",
   },
   mobileSuccessDescription: {
     fontSize: 14,
-    lineHeight: 1.7,
+    lineHeight: 1.74,
   },
   successEmailBox: {
     display: "flex",
@@ -1576,20 +1972,20 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     marginTop: 20,
     padding: 14,
-    borderRadius: 16,
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
+    borderRadius: 0,
+    background: "rgba(247, 241, 223, 0.08)",
+    border: "1px solid rgba(247, 241, 223, 0.16)",
     minWidth: 0,
   },
   successEmailLabel: {
-    color: "#6b7280",
+    color: "rgba(247, 241, 223, 0.62)",
     fontSize: 13,
-    fontWeight: 900,
+    fontWeight: 700,
   },
   successEmail: {
-    color: "#111827",
+    color: "#f7f1df",
     fontSize: 15,
-    fontWeight: 950,
+    fontWeight: 700,
     wordBreak: "break-all",
   },
   resultGrid: {
@@ -1602,51 +1998,51 @@ const styles: Record<string, CSSProperties> = {
   },
   resultCard: {
     padding: 16,
-    borderRadius: 18,
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 8px 22px rgba(15,23,42,0.05)",
+    borderRadius: 0,
+    background: "#fffdf4",
+    border: "1px solid rgba(7, 16, 12, 0.16)",
   },
   resultLabel: {
     display: "block",
     marginBottom: 8,
-    color: "#6b7280",
+    color: "rgba(7, 16, 12, 0.58)",
     fontSize: 12,
-    fontWeight: 900,
-    lineHeight: 1.4,
+    fontWeight: 700,
+    lineHeight: 1.45,
   },
   resultValue: {
     display: "block",
-    color: "#111827",
+    color: "#07100c",
     fontSize: 16,
-    fontWeight: 950,
-    lineHeight: 1.45,
+    fontWeight: 700,
+    lineHeight: 1.5,
     wordBreak: "keep-all",
   },
   nextStepBox: {
     padding: 22,
-    borderRadius: 24,
-    background: "#111827",
-    color: "#ffffff",
+    borderRadius: 0,
+    background: "#0b1711",
+    color: "#f7f1df",
   },
   mobileNextStepBox: {
     padding: 16,
-    borderRadius: 20,
   },
   nextStepHeader: {
     marginBottom: 18,
   },
   nextStepKicker: {
     margin: "0 0 7px",
-    color: "#93c5fd",
+    color: "#dce6b8",
     fontSize: 13,
-    fontWeight: 950,
+    fontWeight: 700,
   },
   nextStepTitle: {
     margin: 0,
-    fontSize: 24,
-    lineHeight: 1.3,
-    letterSpacing: "-0.04em",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 27,
+    lineHeight: 1.44,
+    letterSpacing: "-0.045em",
+    fontWeight: 600,
   },
   mobileNextStepTitle: {
     fontSize: 21,
@@ -1654,75 +2050,77 @@ const styles: Record<string, CSSProperties> = {
   nextStepList: {
     display: "flex",
     flexDirection: "column",
-    gap: 14,
+    gap: 12,
   },
   nextStepItem: {
     display: "flex",
     gap: 13,
     padding: 16,
-    borderRadius: 18,
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 0,
+    background: "rgba(247, 241, 223, 0.07)",
+    border: "1px solid rgba(247, 241, 223, 0.12)",
   },
   nextStepNumber: {
     width: 30,
     height: 30,
-    borderRadius: 999,
+    borderRadius: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#ffffff",
-    color: "#111827",
+    background: "#dce6b8",
+    color: "#0b1711",
     fontSize: 14,
-    fontWeight: 950,
+    fontWeight: 700,
     flex: "0 0 auto",
   },
   nextStepItemTitle: {
     display: "block",
-    color: "#ffffff",
+    color: "#f7f1df",
     fontSize: 15,
-    fontWeight: 950,
-    lineHeight: 1.45,
+    fontWeight: 700,
+    lineHeight: 1.48,
     wordBreak: "keep-all",
   },
   nextStepItemText: {
     margin: "5px 0 0",
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 1.65,
-    wordBreak: "keep-all",
-  },
-  briefExampleBox: {
-    padding: 20,
-    borderRadius: 22,
-    background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-  },
-  briefExampleKicker: {
-    margin: "0 0 12px",
-    color: "#2563eb",
-    fontSize: 13,
-    fontWeight: 950,
-  },
-  briefExample: {
-    padding: 16,
-    borderRadius: 18,
-    background: "#ffffff",
-    border: "1px solid #dbeafe",
-  },
-  briefExampleTitle: {
-    display: "block",
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: 950,
-    lineHeight: 1.5,
-    wordBreak: "keep-all",
-  },
-  briefExampleText: {
-    margin: "9px 0 0",
-    color: "#4b5563",
+    color: "rgba(247, 241, 223, 0.68)",
     fontSize: 14,
     lineHeight: 1.7,
+    wordBreak: "keep-all",
+  },
+  briefingExampleBox: {
+    padding: 20,
+    borderRadius: 0,
+    background: "#eef0d2",
+    border: "1px solid rgba(7, 16, 12, 0.14)",
+  },
+  briefingExampleKicker: {
+    margin: "0 0 12px",
+    color: "#07100c",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  briefingExample: {
+    padding: 16,
+    borderRadius: 0,
+    background: "#fffdf4",
+    border: "1px solid rgba(7, 16, 12, 0.12)",
+  },
+  briefingExampleTitle: {
+    display: "block",
+    color: "#07100c",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 18,
+    fontWeight: 600,
+    lineHeight: 1.72,
+    letterSpacing: "-0.04em",
+    wordBreak: "keep-all",
+  },
+  briefingExampleText: {
+    margin: "9px 0 0",
+    color: "rgba(7, 16, 12, 0.62)",
+    fontSize: 14,
+    lineHeight: 1.74,
     wordBreak: "keep-all",
   },
   successActions: {
@@ -1731,13 +2129,242 @@ const styles: Record<string, CSSProperties> = {
   },
   secondaryButton: {
     minHeight: 48,
-    border: "1px solid #d1d5db",
-    borderRadius: 15,
-    background: "#ffffff",
-    color: "#111827",
+    border: "1px solid rgba(7, 16, 12, 0.2)",
+    borderRadius: 0,
+    background: "#fffdf4",
+    color: "#07100c",
     padding: "0 18px",
     fontSize: 14,
-    fontWeight: 950,
+    fontWeight: 700,
     cursor: "pointer",
+  },
+  buildSection: {
+    padding: 30,
+    border: "1px solid rgba(230, 231, 204, 0.3)",
+    background:
+      "linear-gradient(145deg, rgba(8, 21, 16, 0.66), rgba(5, 10, 12, 0.68))",
+    color: "#f7f1df",
+    marginBottom: 20,
+    backdropFilter: "blur(7px)",
+  },
+  mobileBuildSection: {
+    padding: 18,
+  },
+  buildHeader: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 220px",
+    gap: 22,
+    alignItems: "start",
+    marginBottom: 26,
+  },
+  mobileBuildHeader: {
+    gridTemplateColumns: "1fr",
+    gap: 14,
+  },
+  buildKicker: {
+    margin: "0 0 10px",
+    color: "#dce6b8",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  buildTitle: {
+    margin: 0,
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 48,
+    lineHeight: 1.24,
+    letterSpacing: "-0.065em",
+    fontWeight: 600,
+    wordBreak: "keep-all",
+  },
+  mobileBuildTitle: {
+    fontSize: 31,
+    lineHeight: 1.22,
+  },
+  buildLockBox: {
+    padding: 18,
+    border: "1px solid rgba(230, 231, 204, 0.28)",
+    background: "rgba(5, 11, 9, 0.68)",
+  },
+  buildLockNumber: {
+    display: "block",
+    color: "#dce6b8",
+    fontSize: 42,
+    lineHeight: 1,
+    fontWeight: 700,
+    letterSpacing: "-0.04em",
+  },
+  buildLockText: {
+    display: "block",
+    marginTop: 10,
+    color: "rgba(247, 241, 223, 0.72)",
+    fontSize: 13,
+    lineHeight: 1.62,
+    fontWeight: 700,
+    wordBreak: "keep-all",
+  },
+  buildGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 0.92fr) minmax(280px, 0.72fr)",
+    gap: 22,
+  },
+  mobileBuildGrid: {
+    gridTemplateColumns: "1fr",
+  },
+  buildTextBox: {
+    padding: 22,
+    border: "1px solid rgba(230, 231, 204, 0.22)",
+    background: "rgba(0, 0, 0, 0.16)",
+  },
+  buildParagraph: {
+    margin: "0 0 14px",
+    color: "#f7f1df",
+    fontSize: 17,
+    lineHeight: 1.82,
+    wordBreak: "keep-all",
+  },
+  buildMuted: {
+    margin: "20px 0 0",
+    paddingTop: 18,
+    borderTop: "1px solid rgba(230, 231, 204, 0.18)",
+    color: "rgba(247, 241, 223, 0.66)",
+    fontSize: 14,
+    lineHeight: 1.76,
+    wordBreak: "keep-all",
+  },
+  buildFormMock: {
+    padding: 22,
+    border: "1px solid rgba(247, 241, 223, 0.32)",
+    background: "rgba(247, 241, 223, 0.92)",
+    color: "#07100c",
+  },
+  buildFormTitle: {
+    margin: "0 0 16px",
+    color: "#07100c",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 18,
+    lineHeight: 1.5,
+    letterSpacing: "-0.04em",
+    fontWeight: 600,
+  },
+  buildConditionBox: {
+    marginTop: 22,
+    padding: 16,
+    border: "1px solid rgba(230, 231, 204, 0.22)",
+    background: "rgba(5, 11, 9, 0.46)",
+  },
+  buildConditionLabel: {
+    display: "block",
+    marginBottom: 8,
+    color: "#dce6b8",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  buildConditionText: {
+    display: "block",
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 18,
+    lineHeight: 1.5,
+    letterSpacing: "-0.04em",
+    fontWeight: 600,
+    wordBreak: "keep-all",
+  },
+  buildConditionNote: {
+    margin: "8px 0 0",
+    color: "rgba(247, 241, 223, 0.62)",
+    fontSize: 13,
+    lineHeight: 1.7,
+    wordBreak: "keep-all",
+  },
+  buildLabel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginBottom: 12,
+    color: "#07100c",
+    fontSize: 13,
+    fontWeight: 700,
+    lineHeight: 1.5,
+  },
+  buildInput: {
+    width: "100%",
+    height: 50,
+    borderRadius: 0,
+    border: "1px solid rgba(7, 16, 12, 0.18)",
+    background: "#fffdf4",
+    color: "#07100c",
+    padding: "0 13px",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+  },
+  buildTextarea: {
+    width: "100%",
+    minHeight: 94,
+    borderRadius: 0,
+    border: "1px solid rgba(7, 16, 12, 0.18)",
+    background: "#fffdf4",
+    color: "#07100c",
+    padding: "13px",
+    fontSize: 14,
+    lineHeight: 1.65,
+    outline: "none",
+    resize: "vertical",
+    boxSizing: "border-box",
+    fontFamily: notoSansKr.style.fontFamily,
+  },
+  buildTextareaSmall: {
+    width: "100%",
+    minHeight: 74,
+    borderRadius: 0,
+    border: "1px solid rgba(7, 16, 12, 0.18)",
+    background: "#fffdf4",
+    color: "#07100c",
+    padding: "13px",
+    fontSize: 14,
+    lineHeight: 1.65,
+    outline: "none",
+    resize: "vertical",
+    boxSizing: "border-box",
+    fontFamily: notoSansKr.style.fontFamily,
+  },
+  buildSubmitButton: {
+    width: "100%",
+    height: 54,
+    marginTop: 4,
+    border: "none",
+    background: "#0b1711",
+    color: "#dce6b8",
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  buildMessageBox: {
+    marginTop: 12,
+    padding: 14,
+    border: "1px solid",
+    fontSize: 13,
+    lineHeight: 1.7,
+    fontWeight: 700,
+    wordBreak: "keep-all",
+  },
+  buildMessageSuccess: {
+    background: "#eef0d2",
+    borderColor: "rgba(7, 16, 12, 0.16)",
+    color: "#0b1711",
+  },
+  buildMessageError: {
+    background: "#fff1f2",
+    borderColor: "#fecdd3",
+    color: "#be123c",
+  },
+  buildFormNote: {
+    margin: "12px 0 0",
+    color: "rgba(7, 16, 12, 0.54)",
+    fontSize: 12,
+    lineHeight: 1.6,
+    textAlign: "center",
+    wordBreak: "keep-all",
   },
 };

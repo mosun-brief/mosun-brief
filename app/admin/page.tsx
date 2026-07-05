@@ -208,6 +208,28 @@ type SendResult = {
 
 type ApiResult = AdminStatsResult & SendResult;
 
+type BuildConsultationRequest = {
+  id: string;
+  email: string;
+  name: string | null;
+  want_to_build: string | null;
+  blocked_point: string | null;
+  ai_experience: string | null;
+  help_type: string | null;
+  feedback_count_at_request: number | null;
+  status: string | null;
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+type BuildConsultationListResult = {
+  ok?: boolean;
+  message?: string;
+  requests?: BuildConsultationRequest[];
+  rawText?: string;
+};
+
 const VALUE_LABELS: Record<string, string> = {
   curious: "호기심",
   excited: "기대됨",
@@ -267,6 +289,12 @@ const VALUE_LABELS: Record<string, string> = {
   sent: "발송 성공",
   failed: "발송 실패",
   skipped_duplicate: "중복 제외",
+
+  pending: "대기",
+  reviewing: "검토중",
+  done: "완료",
+  rejected: "보류",
+
   unknown: "미확인",
   Unknown: "미확인",
 };
@@ -414,11 +442,38 @@ async function readApiResponse(response: Response): Promise<ApiResult> {
   }
 }
 
+async function readBuildConsultationResponse(
+  response: Response
+): Promise<BuildConsultationListResult> {
+  const text = await response.text();
+
+  if (!text) {
+    return {
+      ok: false,
+      message: `API가 빈 응답을 반환했습니다. status=${response.status}`,
+    };
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      message: `JSON이 아닌 응답을 받았습니다. status=${response.status}`,
+      rawText: text.slice(0, 1000),
+    };
+  }
+}
+
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [stats, setStats] = useState<AdminStatsResult | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  const [buildRequests, setBuildRequests] = useState<
+    BuildConsultationRequest[]
+  >([]);
+  const [buildRequestsMessage, setBuildRequestsMessage] = useState("");
   const [message, setMessage] = useState("");
   const [debugText, setDebugText] = useState("");
   const [showDebug, setShowDebug] = useState(false);
@@ -437,6 +492,48 @@ export default function AdminPage() {
     setAdminSecret(savedSecret);
     setTestEmail(savedTestEmail);
   }, []);
+
+  async function loadBuildConsultationRequests(secret: string) {
+    if (!secret) {
+      setBuildRequests([]);
+      setBuildRequestsMessage(
+        "ADMIN_SECRET을 입력하면 상담 신청 목록을 불러옵니다."
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/build-consultation", {
+        method: "GET",
+        headers: {
+          "x-admin-secret": secret,
+        },
+      });
+
+      const result = await readBuildConsultationResponse(response);
+
+      if (!response.ok || !result.ok) {
+        setBuildRequests([]);
+        setBuildRequestsMessage(
+          result.message || "상담 신청 목록을 불러오지 못했습니다."
+        );
+        return;
+      }
+
+      setBuildRequests(result.requests || []);
+      setBuildRequestsMessage(
+        result.message || "Personal AI Build 상담 신청 목록을 불러왔습니다."
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      setBuildRequests([]);
+      setBuildRequestsMessage(
+        `상담 신청 목록 로딩 중 오류가 발생했습니다. ${errorMessage}`
+      );
+    }
+  }
 
   async function handleLoadStats(secret = adminSecret.trim()) {
     if (!secret) {
@@ -467,6 +564,7 @@ export default function AdminPage() {
       setStats(result);
       setMessage(result.message || "관리자 데이터를 불러왔습니다.");
       setDebugText(JSON.stringify(result, null, 2));
+      await loadBuildConsultationRequests(secret);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -552,11 +650,11 @@ export default function AdminPage() {
   return (
     <main style={styles.page}>
       <section style={styles.hero}>
-        <p style={styles.badge}>AI-FU Admin · D-12</p>
+        <p style={styles.badge}>Personal AI Briefing Admin</p>
         <h1 style={styles.title}>운영 대시보드</h1>
         <p style={styles.description}>
-          구독자, 뉴스 자료, 피드백, 발송 로그를 확인하고 운영 회고와 발송 전
-          체크리스트를 통해 오늘 운영 가능한 상태인지 점검합니다.
+          구독자, 뉴스 자료, 피드백, 발송 로그, Personal AI Build 상담 신청을
+          확인하고 오늘 운영 가능한 상태인지 점검합니다.
         </p>
       </section>
 
@@ -614,7 +712,7 @@ export default function AdminPage() {
           >
             {loadingAction === "test"
               ? "테스트 발송 중..."
-              : "테스트 브리프 발송"}
+              : "테스트 브리핑 발송"}
           </button>
 
           <button
@@ -623,7 +721,9 @@ export default function AdminPage() {
             onClick={() => sendBrief("full")}
             disabled={loading}
           >
-            {loadingAction === "full" ? "전체 발송 중..." : "전체 브리프 발송"}
+            {loadingAction === "full"
+              ? "전체 발송 중..."
+              : "전체 브리핑 발송"}
           </button>
         </div>
 
@@ -643,7 +743,7 @@ export default function AdminPage() {
           </a>
 
           <a href="/admin/brief-draft" style={styles.adminLink}>
-            브리프 초안 생성
+            브리핑 초안 생성
           </a>
 
           <a href="/admin/newsletter-items" style={styles.adminLink}>
@@ -662,6 +762,13 @@ export default function AdminPage() {
 
       {hasSendResult && sendResult && <SendResultPanel result={sendResult} />}
 
+      {hasStats && (
+        <BuildConsultationRequestsPanel
+          requests={buildRequests}
+          message={buildRequestsMessage}
+        />
+      )}
+
       {hasStats && stats && <StatsDashboard stats={stats} />}
 
       {debugText && (
@@ -678,6 +785,115 @@ export default function AdminPage() {
         </section>
       )}
     </main>
+  );
+}
+
+function BuildConsultationRequestsPanel({
+  requests,
+  message,
+}: {
+  requests: BuildConsultationRequest[];
+  message: string;
+}) {
+  return (
+    <section style={styles.buildRequestPanel}>
+      <div style={styles.buildRequestHeader}>
+        <div>
+          <p style={styles.buildRequestBadge}>Personal AI Build</p>
+          <h2 style={styles.panelTitle}>상담 신청 목록</h2>
+          <p style={styles.reviewDescription}>
+            피드백 50개 이상 조건을 통과해 저장된 1:1 AI 프로젝트 상담 신청을
+            확인합니다.
+          </p>
+        </div>
+
+        <div style={styles.buildRequestCountBox}>
+          <span style={styles.buildRequestCount}>
+            {requests.length.toLocaleString("ko-KR")}
+          </span>
+          <span style={styles.buildRequestCountLabel}>최근 신청</span>
+        </div>
+      </div>
+
+      {message && <div style={styles.buildRequestMessage}>{message}</div>}
+
+      {requests.length === 0 ? (
+        <p style={styles.emptyText}>아직 상담 신청이 없습니다.</p>
+      ) : (
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>상태</th>
+                <th style={styles.th}>신청일</th>
+                <th style={styles.th}>이메일</th>
+                <th style={styles.th}>이름</th>
+                <th style={styles.th}>만들고 싶은 것</th>
+                <th style={styles.th}>막힌 지점</th>
+                <th style={styles.th}>AI 경험</th>
+                <th style={styles.th}>원하는 도움</th>
+                <th style={styles.th}>피드백 수</th>
+                <th style={styles.th}>관리 메모</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => (
+                <tr key={request.id}>
+                  <td style={styles.td}>
+                    <StatusBadge
+                      label={labelOf(request.status)}
+                      tone={
+                        request.status === "done"
+                          ? "green"
+                          : request.status === "rejected"
+                          ? "red"
+                          : "gray"
+                      }
+                    />
+                  </td>
+                  <td style={styles.td}>{formatDate(request.created_at)}</td>
+                  <td style={styles.td}>
+                    <strong>{request.email}</strong>
+                  </td>
+                  <td style={styles.td}>{request.name || "-"}</td>
+                  <td style={styles.td}>
+                    <div style={styles.longTextCell}>
+                      {request.want_to_build || "-"}
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.longTextCell}>
+                      {request.blocked_point || "-"}
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.longTextCell}>
+                      {request.ai_experience || "-"}
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.longTextCell}>
+                      {request.help_type || "-"}
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    {(request.feedback_count_at_request ?? 0).toLocaleString(
+                      "ko-KR"
+                    )}
+                    개
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.longTextCell}>
+                      {request.admin_note || "-"}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -844,7 +1060,7 @@ function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
     <section style={styles.subscriberStatusPanel}>
       <div style={styles.subscriberStatusHeader}>
         <div>
-          <p style={styles.subscriberStatusBadge}>D-12 구독자 상태</p>
+          <p style={styles.subscriberStatusBadge}>구독자 상태</p>
           <h2 style={styles.panelTitle}>구독자 상태 / 재진단 확인</h2>
           <p style={styles.reviewDescription}>
             최근 구독자 기준으로 현재 AI 감정, 목적, 막힘, 행동 시간, 난이도,
@@ -1032,7 +1248,7 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
         },
         {
           title: "구독자 상태 상세",
-          value: "D-11 완료",
+          value: "준비됨",
           status: subscriberCount > 0 ? "ready" : "warning",
           help:
             subscriberCount > 0
@@ -1132,7 +1348,7 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
     <section style={styles.checklistPanel}>
       <div style={styles.checklistHeader}>
         <div>
-          <p style={styles.checklistBadge}>D-12 운영 체크리스트</p>
+          <p style={styles.checklistBadge}>운영 체크리스트</p>
           <h2 style={styles.panelTitle}>오늘 발송 전 최종 점검</h2>
           <p style={styles.reviewDescription}>
             전체 발송 전에 자료, 구독자, 미리보기, 실패 로그, 피드백, 다음 등록
@@ -2520,6 +2736,75 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 12,
     fontWeight: 900,
     whiteSpace: "nowrap",
+  },
+  buildRequestPanel: {
+    maxWidth: 1180,
+    margin: "0 auto 24px",
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 16px 40px rgba(0,0,0,0.18)",
+    border: "1px solid #e9d5ff",
+  },
+  buildRequestHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  buildRequestBadge: {
+    display: "inline-flex",
+    margin: "0 0 10px",
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#faf5ff",
+    color: "#7e22ce",
+    border: "1px solid #e9d5ff",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  buildRequestCountBox: {
+    minWidth: 120,
+    padding: 14,
+    borderRadius: 18,
+    background: "#faf5ff",
+    border: "1px solid #e9d5ff",
+    textAlign: "right",
+  },
+  buildRequestCount: {
+    display: "block",
+    color: "#581c87",
+    fontSize: 30,
+    lineHeight: 1,
+    fontWeight: 900,
+    letterSpacing: "-0.04em",
+  },
+  buildRequestCountLabel: {
+    display: "block",
+    marginTop: 6,
+    color: "#7e22ce",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  buildRequestMessage: {
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    background: "#fafafa",
+    border: "1px solid #e5e7eb",
+    color: "#374151",
+    fontSize: 13,
+    lineHeight: 1.6,
+    fontWeight: 800,
+  },
+  longTextCell: {
+    maxWidth: 280,
+    whiteSpace: "normal",
+    color: "#374151",
+    fontSize: 13,
+    lineHeight: 1.6,
   },
   debugSection: {
     maxWidth: 1180,
