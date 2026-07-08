@@ -144,7 +144,6 @@ const FALLBACK_OPTIONS: CategoryOption[] = [
     sort_order: 6,
     is_active: true,
   },
-
   {
     group_key: "ai_intent",
     option_value: "not_sure",
@@ -201,7 +200,6 @@ const FALLBACK_OPTIONS: CategoryOption[] = [
     sort_order: 7,
     is_active: true,
   },
-
   {
     group_key: "blocker",
     option_value: "too_much_info",
@@ -250,7 +248,6 @@ const FALLBACK_OPTIONS: CategoryOption[] = [
     sort_order: 6,
     is_active: true,
   },
-
   {
     group_key: "action_time",
     option_value: "10min",
@@ -655,6 +652,8 @@ export default function HomePage() {
           </p>
         </section>
 
+        <BriefingPreviewSection isMobile={isMobile} />
+
         <section
           style={{ ...styles.card, ...(isMobile ? styles.mobileCard : {}) }}
           id="subscribe-result"
@@ -802,6 +801,13 @@ export default function HomePage() {
                 <p style={styles.footerNote}>
                   같은 이메일로 다시 신청하면 기존 정보가 업데이트됩니다.
                 </p>
+
+                <div style={styles.privacyNotice}>
+                  입력하신 이메일과 선택 정보는 맞춤 AI 브리핑 발송 및 품질 개선
+                  목적으로만 사용됩니다. 수집한 정보는 제3자에게 판매하거나
+                  제공하지 않으며, 이메일 하단의 구독 취소 링크를 통해 언제든
+                  구독을 중단할 수 있습니다.
+                </div>
               </form>
             </>
           )}
@@ -896,26 +902,11 @@ function SuccessOnboarding({
           ...(isMobile ? styles.mobileResultGrid : {}),
         }}
       >
-        <div style={styles.resultCard}>
-          <span style={styles.resultLabel}>AI에 대한 현재 감정</span>
-          <strong style={styles.resultValue}>{summary.aiEmotion}</strong>
-        </div>
-        <div style={styles.resultCard}>
-          <span style={styles.resultLabel}>AI로 하고 싶은 것</span>
-          <strong style={styles.resultValue}>{summary.aiIntent}</strong>
-        </div>
-        <div style={styles.resultCard}>
-          <span style={styles.resultLabel}>지금 막히는 지점</span>
-          <strong style={styles.resultValue}>{summary.blocker}</strong>
-        </div>
-        <div style={styles.resultCard}>
-          <span style={styles.resultLabel}>이번 주 가능한 행동 시간</span>
-          <strong style={styles.resultValue}>{summary.actionTime}</strong>
-        </div>
-        <div style={styles.resultCard}>
-          <span style={styles.resultLabel}>선호 난이도</span>
-          <strong style={styles.resultValue}>{difficultyLabel}</strong>
-        </div>
+        <ResultCard label="AI에 대한 현재 감정" value={summary.aiEmotion} />
+        <ResultCard label="AI로 하고 싶은 것" value={summary.aiIntent} />
+        <ResultCard label="지금 막히는 지점" value={summary.blocker} />
+        <ResultCard label="이번 주 가능한 행동 시간" value={summary.actionTime} />
+        <ResultCard label="선호 난이도" value={difficultyLabel} />
       </div>
 
       <section
@@ -924,47 +915,30 @@ function SuccessOnboarding({
           ...(isMobile ? styles.mobileNextStepBox : {}),
         }}
       >
-        <div style={styles.nextStepHeader}>
-          <p style={styles.nextStepKicker}>다음에 하면 좋은 것</p>
-          <h3
-            style={{
-              ...styles.nextStepTitle,
-              ...(isMobile ? styles.mobileNextStepTitle : {}),
-            }}
-          >
-            첫 브리핑을 받기 전 준비
-          </h3>
-        </div>
+        <p style={styles.nextStepKicker}>다음에 하면 좋은 것</p>
+        <h3
+          style={{
+            ...styles.nextStepTitle,
+            ...(isMobile ? styles.mobileNextStepTitle : {}),
+          }}
+        >
+          첫 브리핑을 받기 전 준비
+        </h3>
 
         <div style={styles.nextStepList}>
-          <NextStepItem number="1">
-            <strong style={styles.nextStepItemTitle}>
-              메일함에서 브리핑을 확인하세요
-            </strong>
-            <p style={styles.nextStepItemText}>
-              첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
-              도착하면 한 번 열어주세요.
-            </p>
+          <NextStepItem number="1" title="메일함에서 브리핑을 확인하세요">
+            첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
+            도착하면 한 번 열어주세요.
           </NextStepItem>
 
-          <NextStepItem number="2">
-            <strong style={styles.nextStepItemTitle}>
-              자료를 전부 읽으려고 하지 마세요
-            </strong>
-            <p style={styles.nextStepItemText}>
-              목표는 정보 과식이 아니라 선택입니다. “왜 이 자료가 왔는지”와
-              “이번 주 실행”만 먼저 보면 됩니다.
-            </p>
+          <NextStepItem number="2" title="자료를 전부 읽으려고 하지 마세요">
+            목표는 정보 과식이 아니라 선택입니다. “왜 이 자료가 왔는지”와
+            “이번 주 실행”만 먼저 보면 됩니다.
           </NextStepItem>
 
-          <NextStepItem number="3">
-            <strong style={styles.nextStepItemTitle}>
-              피드백 버튼을 눌러주세요
-            </strong>
-            <p style={styles.nextStepItemText}>
-              좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
-              브리핑이 더 개인화됩니다.
-            </p>
+          <NextStepItem number="3" title="피드백 버튼을 눌러주세요">
+            좋음, 더 깊게, 별로, 실행해봄, 실행안해봄 피드백이 쌓이면 다음
+            브리핑이 더 개인화됩니다.
           </NextStepItem>
         </div>
       </section>
@@ -993,17 +967,31 @@ function SuccessOnboarding({
   );
 }
 
+function ResultCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={styles.resultCard}>
+      <span style={styles.resultLabel}>{label}</span>
+      <strong style={styles.resultValue}>{value}</strong>
+    </div>
+  );
+}
+
 function NextStepItem({
   number,
+  title,
   children,
 }: {
   number: string;
+  title: string;
   children: ReactNode;
 }) {
   return (
     <div style={styles.nextStepItem}>
       <div style={styles.nextStepNumber}>{number}</div>
-      <div>{children}</div>
+      <div>
+        <strong style={styles.nextStepItemTitle}>{title}</strong>
+        <p style={styles.nextStepItemText}>{children}</p>
+      </div>
     </div>
   );
 }
@@ -1094,6 +1082,195 @@ function QuestionBlock({
         })}
       </div>
     </section>
+  );
+}
+
+function BriefingPreviewSection({ isMobile }: { isMobile: boolean }) {
+  return (
+    <section
+      style={{
+        ...styles.realPreviewSection,
+        ...(isMobile ? styles.mobileRealPreviewSection : {}),
+      }}
+    >
+      <div
+        style={{
+          ...styles.realPreviewHeader,
+          ...(isMobile ? styles.mobileRealPreviewHeader : {}),
+        }}
+      >
+        <div>
+          <p style={styles.realPreviewKicker}>브리핑 미리보기</p>
+          <h2
+            style={{
+              ...styles.realPreviewTitle,
+              ...(isMobile ? styles.mobileRealPreviewTitle : {}),
+            }}
+          >
+            실제로 이런 브리핑을
+            <br />
+            받게 됩니다.
+          </h2>
+        </div>
+
+        <p style={styles.realPreviewDescription}>
+          단순히 AI 뉴스를 모아 보내는 것이 아니라, 당신의 상태·관심사·난이도·
+          피드백에 따라 이번 주 하나의 자료와 실행 과제를 추천합니다.
+        </p>
+      </div>
+
+      <div
+        style={{
+          ...styles.realPreviewGrid,
+          ...(isMobile ? styles.mobileRealPreviewGrid : {}),
+        }}
+      >
+        <article style={styles.briefingCard}>
+          <div style={styles.briefingCardTop}>
+            <span style={styles.briefingTagPrimary}>추천 1</span>
+            <span style={styles.briefingTag}>general_ai</span>
+            <span style={styles.briefingTag}>중간</span>
+            <span style={styles.briefingTag}>neutral</span>
+          </div>
+
+          <h3
+            style={{
+              ...styles.briefingCardTitle,
+              ...(isMobile ? styles.mobileBriefingCardTitle : {}),
+            }}
+          >
+            AI 에이전트가 웹을 대신 돌아다니는 시대를 보고 싶은 사람을 위한
+            Tabstack by Mozilla
+          </h3>
+
+          <section style={styles.reasonBox}>
+            <p style={styles.reasonTitle}>이 자료가 나에게 온 이유</p>
+            <ul style={styles.reasonList}>
+              <li style={styles.reasonItem}>
+                현재 감정이 ‘기대됨’인 구독자에게 맞는 자료
+              </li>
+              <li style={styles.reasonItem}>
+                관심 방향이 ‘사업 기회나 돈 벌 기회’인 구독자에게 맞는 자료
+              </li>
+              <li style={styles.reasonItem}>
+                ‘기술적인 내용이 어려움’을 줄이는 자료
+              </li>
+              <li style={styles.reasonItem}>이전에 실행해본 자료와 유사한 방향</li>
+            </ul>
+          </section>
+
+          <section style={styles.briefingTextBlock}>
+            <p style={styles.briefingSmallTitle}>먼저 이것만 이해하세요</p>
+            <p style={styles.briefingParagraph}>
+              앞으로 브라우저는 단순히 웹페이지를 보여주는 도구를 넘어,
+              사용자를 대신해 정보를 찾고 정리하는 방향으로 바뀌고 있습니다.
+              중요한 것은 모든 기술을 이해하는 것이 아니라, 내 일에서 어떤
+              흐름을 맡길 수 있는지 상상해보는 것입니다.
+            </p>
+          </section>
+
+          <section style={styles.balanceBox}>
+            <p style={styles.balanceTitle}>균형 관점</p>
+            <p style={styles.balanceText}>
+              비개발자가 바로 쓰기에는 아직 어렵습니다. 하지만 “앞으로 AI
+              서비스가 단순 답변을 넘어 실제 웹 작업을 대신한다”는 흐름을
+              이해하기에는 좋은 자료입니다.
+            </p>
+          </section>
+
+          <section style={styles.actionBox}>
+            <p style={styles.actionTitle}>오늘 딱 하나 할 일</p>
+            <p style={styles.actionText}>
+              Tabstack 소개 페이지를 읽고 “AI가 웹에서 대신 해주면 좋을 일”을
+              3개 적어보세요. 예: 경쟁사 가격 조사, 채용공고 수집, 여행지 후보
+              비교. 그중 하나를 골라 이 작업을 사람이 하면 몇 단계가 필요한지만
+              적어봅니다.
+            </p>
+          </section>
+
+          <button type="button" style={styles.previewReadButton}>
+            원문 보기
+          </button>
+
+          <section style={styles.feedbackPreviewBox}>
+            <div style={styles.feedbackPreviewHeader}>
+              <p style={styles.feedbackPreviewTitle}>
+                이 버튼이 다음 브리핑을 바꿉니다
+              </p>
+              <p style={styles.feedbackPreviewDescription}>
+                하나만 눌러도 다음 자료 선택, 난이도, Action hint 추천 점수에
+                반영됩니다.
+              </p>
+            </div>
+
+            <div
+              style={{
+                ...styles.feedbackButtonGrid,
+                ...(isMobile ? styles.mobileFeedbackButtonGrid : {}),
+              }}
+            >
+              <FeedbackPreviewButton title="좋음">
+                비슷한 자료를 더 받을래요
+              </FeedbackPreviewButton>
+              <FeedbackPreviewButton title="더 깊게">
+                이 방향을 더 심화할래요
+              </FeedbackPreviewButton>
+              <FeedbackPreviewButton title="별로">
+                다음 추천에서 낮출게요
+              </FeedbackPreviewButton>
+              <FeedbackPreviewButton title="실행해봄">
+                실행 가능한 방향을 더 줄게요
+              </FeedbackPreviewButton>
+              <FeedbackPreviewButton title="실행안해봄">
+                난이도와 시간을 다시 맞출게요
+              </FeedbackPreviewButton>
+            </div>
+          </section>
+        </article>
+
+        <aside style={styles.previewExplanationBox}>
+          <p style={styles.previewExplanationKicker}>왜 보여드리나요?</p>
+          <h3 style={styles.previewExplanationTitle}>
+            메일을 넣기 전, 받을 결과물을 먼저 확인할 수 있어야 합니다.
+          </h3>
+          <p style={styles.previewExplanationText}>
+            Personal AI Briefing은 뉴스 목록이 아니라 “이 자료가 왜 나에게
+            왔는지”와 “오늘 하나만 한다면 무엇을 할지”를 함께 보냅니다.
+          </p>
+          <div style={styles.previewExplanationList}>
+            <PreviewCheckItem>자료 1개를 고르는 이유</PreviewCheckItem>
+            <PreviewCheckItem>초보자도 이해할 핵심 요약</PreviewCheckItem>
+            <PreviewCheckItem>균형 잡힌 관점</PreviewCheckItem>
+            <PreviewCheckItem>이번 주 가능한 행동 1개</PreviewCheckItem>
+            <PreviewCheckItem>다음 추천을 바꾸는 피드백</PreviewCheckItem>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function FeedbackPreviewButton({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div style={styles.feedbackPreviewButton}>
+      <strong style={styles.feedbackPreviewButtonTitle}>{title}</strong>
+      <span style={styles.feedbackPreviewButtonText}>{children}</span>
+    </div>
+  );
+}
+
+function PreviewCheckItem({ children }: { children: ReactNode }) {
+  return (
+    <div style={styles.previewCheckItem}>
+      <span style={styles.previewCheckMark}>✓</span>
+      <span>{children}</span>
+    </div>
   );
 }
 
@@ -1536,7 +1713,6 @@ const styles: Record<string, CSSProperties> = {
   previewPanel: {
     alignSelf: "end",
     padding: 28,
-    borderRadius: 0,
     background:
       "linear-gradient(145deg, rgba(14, 28, 23, 0.72), rgba(13, 19, 24, 0.68))",
     border: "1px solid rgba(230, 231, 204, 0.3)",
@@ -1585,7 +1761,6 @@ const styles: Record<string, CSSProperties> = {
   previewDot: {
     width: 7,
     height: 7,
-    borderRadius: 0,
     background: "#dce6b8",
     marginTop: 8,
     flex: "0 0 auto",
@@ -1622,9 +1797,303 @@ const styles: Record<string, CSSProperties> = {
     wordBreak: "keep-all",
     textShadow: "0 10px 24px rgba(0,0,0,0.38)",
   },
+  realPreviewSection: {
+    padding: 30,
+    marginBottom: 24,
+    border: "1px solid rgba(230, 231, 204, 0.3)",
+    background:
+      "linear-gradient(145deg, rgba(8, 21, 16, 0.72), rgba(5, 10, 12, 0.7))",
+    color: "#f7f1df",
+    backdropFilter: "blur(7px)",
+  },
+  mobileRealPreviewSection: {
+    padding: 18,
+  },
+  realPreviewHeader: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.72fr)",
+    gap: 22,
+    alignItems: "end",
+    marginBottom: 24,
+  },
+  mobileRealPreviewHeader: {
+    gridTemplateColumns: "1fr",
+    gap: 10,
+  },
+  realPreviewKicker: {
+    margin: "0 0 10px",
+    color: "#dce6b8",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  realPreviewTitle: {
+    margin: 0,
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 46,
+    lineHeight: 1.24,
+    letterSpacing: "-0.065em",
+    fontWeight: 600,
+    wordBreak: "keep-all",
+  },
+  mobileRealPreviewTitle: {
+    fontSize: 31,
+  },
+  realPreviewDescription: {
+    margin: 0,
+    color: "rgba(247, 241, 223, 0.7)",
+    fontSize: 14,
+    lineHeight: 1.8,
+    wordBreak: "keep-all",
+  },
+  realPreviewGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 320px",
+    gap: 22,
+    alignItems: "start",
+  },
+  mobileRealPreviewGrid: {
+    gridTemplateColumns: "1fr",
+  },
+  briefingCard: {
+    padding: 22,
+    background: "rgba(247, 241, 223, 0.96)",
+    color: "#07100c",
+    border: "1px solid rgba(247, 241, 223, 0.72)",
+    boxShadow: "0 22px 70px rgba(0,0,0,0.28)",
+  },
+  briefingCardTop: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  briefingTagPrimary: {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 28,
+    padding: "0 10px",
+    background: "#eef0d2",
+    color: "#1f3f2e",
+    border: "1px solid rgba(7, 16, 12, 0.12)",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  briefingTag: {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 28,
+    padding: "0 10px",
+    background: "#f7f1df",
+    color: "rgba(7, 16, 12, 0.72)",
+    border: "1px solid rgba(7, 16, 12, 0.12)",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  briefingCardTitle: {
+    margin: "0 0 18px",
+    color: "#07100c",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 28,
+    lineHeight: 1.46,
+    letterSpacing: "-0.055em",
+    fontWeight: 700,
+    wordBreak: "keep-all",
+  },
+  mobileBriefingCardTitle: {
+    fontSize: 22,
+    lineHeight: 1.48,
+  },
+  reasonBox: {
+    padding: 18,
+    marginBottom: 18,
+    background: "#fff4e6",
+    border: "1px solid rgba(197, 89, 17, 0.25)",
+  },
+  reasonTitle: {
+    margin: "0 0 10px",
+    color: "#a0440e",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  reasonList: {
+    margin: 0,
+    paddingLeft: 18,
+    color: "#b45309",
+  },
+  reasonItem: {
+    margin: "0 0 6px",
+    fontSize: 13,
+    lineHeight: 1.7,
+    wordBreak: "keep-all",
+  },
+  briefingTextBlock: {
+    marginBottom: 16,
+  },
+  briefingSmallTitle: {
+    margin: "0 0 8px",
+    color: "#07100c",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  briefingParagraph: {
+    margin: 0,
+    color: "rgba(7, 16, 12, 0.72)",
+    fontSize: 14,
+    lineHeight: 1.86,
+    wordBreak: "keep-all",
+  },
+  balanceBox: {
+    padding: 16,
+    marginBottom: 16,
+    background: "rgba(7, 16, 12, 0.04)",
+    border: "1px solid rgba(7, 16, 12, 0.08)",
+  },
+  balanceTitle: {
+    margin: "0 0 8px",
+    color: "#07100c",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  balanceText: {
+    margin: 0,
+    color: "rgba(7, 16, 12, 0.64)",
+    fontSize: 13,
+    lineHeight: 1.78,
+    wordBreak: "keep-all",
+  },
+  actionBox: {
+    padding: 18,
+    marginBottom: 16,
+    background: "#e8fff1",
+    border: "1px solid rgba(16, 185, 129, 0.28)",
+  },
+  actionTitle: {
+    margin: "0 0 8px",
+    color: "#047857",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  actionText: {
+    margin: 0,
+    color: "#047857",
+    fontSize: 14,
+    lineHeight: 1.82,
+    fontWeight: 600,
+    wordBreak: "keep-all",
+  },
+  previewReadButton: {
+    minHeight: 44,
+    marginBottom: 16,
+    padding: "0 16px",
+    border: "none",
+    background: "#0b1711",
+    color: "#f7f1df",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  feedbackPreviewBox: {
+    padding: 18,
+    background: "rgba(7, 16, 12, 0.03)",
+    border: "1px solid rgba(7, 16, 12, 0.12)",
+  },
+  feedbackPreviewHeader: {
+    marginBottom: 14,
+  },
+  feedbackPreviewTitle: {
+    margin: "0 0 6px",
+    color: "#07100c",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  feedbackPreviewDescription: {
+    margin: 0,
+    color: "rgba(7, 16, 12, 0.58)",
+    fontSize: 12,
+    lineHeight: 1.62,
+    wordBreak: "keep-all",
+  },
+  feedbackButtonGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 8,
+  },
+  mobileFeedbackButtonGrid: {
+    gridTemplateColumns: "1fr 1fr",
+  },
+  feedbackPreviewButton: {
+    minHeight: 66,
+    padding: 10,
+    background: "#fffdf4",
+    border: "1px solid rgba(7, 16, 12, 0.18)",
+    color: "#07100c",
+  },
+  feedbackPreviewButtonTitle: {
+    display: "block",
+    marginBottom: 4,
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  feedbackPreviewButtonText: {
+    display: "block",
+    color: "rgba(7, 16, 12, 0.56)",
+    fontSize: 11,
+    lineHeight: 1.45,
+    wordBreak: "keep-all",
+  },
+  previewExplanationBox: {
+    padding: 22,
+    border: "1px solid rgba(230, 231, 204, 0.24)",
+    background: "rgba(5, 11, 9, 0.56)",
+  },
+  previewExplanationKicker: {
+    margin: "0 0 10px",
+    color: "#dce6b8",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  previewExplanationTitle: {
+    margin: 0,
+    color: "#fbf4df",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 25,
+    lineHeight: 1.44,
+    letterSpacing: "-0.05em",
+    fontWeight: 600,
+    wordBreak: "keep-all",
+  },
+  previewExplanationText: {
+    margin: "14px 0 0",
+    color: "rgba(247, 241, 223, 0.68)",
+    fontSize: 14,
+    lineHeight: 1.78,
+    wordBreak: "keep-all",
+  },
+  previewExplanationList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    marginTop: 18,
+    paddingTop: 18,
+    borderTop: "1px solid rgba(230, 231, 204, 0.16)",
+  },
+  previewCheckItem: {
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+    color: "rgba(247, 241, 223, 0.8)",
+    fontSize: 13,
+    lineHeight: 1.62,
+    fontWeight: 700,
+    wordBreak: "keep-all",
+  },
+  previewCheckMark: {
+    color: "#dce6b8",
+    fontWeight: 900,
+    flex: "0 0 auto",
+  },
   card: {
     padding: 30,
-    borderRadius: 0,
     background: "rgba(247, 241, 223, 0.94)",
     color: "#07100c",
     boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
@@ -1703,7 +2172,6 @@ const styles: Record<string, CSSProperties> = {
   input: {
     width: "100%",
     height: 54,
-    borderRadius: 0,
     border: "1px solid rgba(7, 16, 12, 0.24)",
     padding: "0 14px",
     fontSize: 15,
@@ -1715,7 +2183,6 @@ const styles: Record<string, CSSProperties> = {
   loadingText: {
     margin: "4px 0 20px",
     padding: 14,
-    borderRadius: 0,
     background: "rgba(7, 16, 12, 0.05)",
     color: "rgba(7, 16, 12, 0.62)",
     fontSize: 14,
@@ -1729,7 +2196,6 @@ const styles: Record<string, CSSProperties> = {
   },
   questionBlock: {
     padding: 20,
-    borderRadius: 0,
     border: "1px solid rgba(7, 16, 12, 0.18)",
     background: "#fffdf4",
     minWidth: 0,
@@ -1749,7 +2215,6 @@ const styles: Record<string, CSSProperties> = {
   stepBadge: {
     width: 44,
     height: 44,
-    borderRadius: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1806,12 +2271,10 @@ const styles: Record<string, CSSProperties> = {
     minHeight: 94,
     textAlign: "left",
     border: "1px solid rgba(7, 16, 12, 0.16)",
-    borderRadius: 0,
     background: "#f7f1df",
     padding: 14,
     cursor: "pointer",
     color: "#07100c",
-    transition: "border 120ms ease, box-shadow 120ms ease, background 120ms ease",
     boxSizing: "border-box",
   },
   mobileOptionButton: {
@@ -1842,7 +2305,6 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     padding: "4px 7px",
-    borderRadius: 0,
     background: "#0b1711",
     color: "#dce6b8",
     fontSize: 11,
@@ -1859,7 +2321,6 @@ const styles: Record<string, CSSProperties> = {
   summaryBox: {
     marginTop: 22,
     padding: 18,
-    borderRadius: 0,
     background: "#0b1711",
     border: "1px solid #0b1711",
     color: "#f7f1df",
@@ -1885,7 +2346,6 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
     height: 62,
     border: "none",
-    borderRadius: 0,
     background: "#0b1711",
     color: "#dce6b8",
     marginTop: 22,
@@ -1900,7 +2360,6 @@ const styles: Record<string, CSSProperties> = {
   messageBox: {
     marginTop: 16,
     padding: 15,
-    borderRadius: 0,
     border: "1px solid",
     fontSize: 14,
     lineHeight: 1.7,
@@ -1915,6 +2374,17 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     wordBreak: "keep-all",
   },
+  privacyNotice: {
+    margin: "14px 0 0",
+    padding: 14,
+    background: "rgba(7, 16, 12, 0.04)",
+    border: "1px solid rgba(7, 16, 12, 0.12)",
+    color: "rgba(7, 16, 12, 0.62)",
+    fontSize: 12,
+    lineHeight: 1.72,
+    textAlign: "center",
+    wordBreak: "keep-all",
+  },
   successWrap: {
     display: "flex",
     flexDirection: "column",
@@ -1922,7 +2392,6 @@ const styles: Record<string, CSSProperties> = {
   },
   successHero: {
     padding: 26,
-    borderRadius: 0,
     background: "#0b1711",
     border: "1px solid #0b1711",
   },
@@ -1933,7 +2402,6 @@ const styles: Record<string, CSSProperties> = {
     display: "inline-block",
     margin: "0 0 12px",
     padding: "7px 10px",
-    borderRadius: 0,
     background: "#dce6b8",
     color: "#0b1711",
     fontSize: 13,
@@ -1972,7 +2440,6 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     marginTop: 20,
     padding: 14,
-    borderRadius: 0,
     background: "rgba(247, 241, 223, 0.08)",
     border: "1px solid rgba(247, 241, 223, 0.16)",
     minWidth: 0,
@@ -1998,7 +2465,6 @@ const styles: Record<string, CSSProperties> = {
   },
   resultCard: {
     padding: 16,
-    borderRadius: 0,
     background: "#fffdf4",
     border: "1px solid rgba(7, 16, 12, 0.16)",
   },
@@ -2020,15 +2486,11 @@ const styles: Record<string, CSSProperties> = {
   },
   nextStepBox: {
     padding: 22,
-    borderRadius: 0,
     background: "#0b1711",
     color: "#f7f1df",
   },
   mobileNextStepBox: {
     padding: 16,
-  },
-  nextStepHeader: {
-    marginBottom: 18,
   },
   nextStepKicker: {
     margin: "0 0 7px",
@@ -2037,7 +2499,7 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   nextStepTitle: {
-    margin: 0,
+    margin: "0 0 18px",
     fontFamily: notoSerifKr.style.fontFamily,
     fontSize: 27,
     lineHeight: 1.44,
@@ -2056,14 +2518,12 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     gap: 13,
     padding: 16,
-    borderRadius: 0,
     background: "rgba(247, 241, 223, 0.07)",
     border: "1px solid rgba(247, 241, 223, 0.12)",
   },
   nextStepNumber: {
     width: 30,
     height: 30,
-    borderRadius: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -2090,7 +2550,6 @@ const styles: Record<string, CSSProperties> = {
   },
   briefingExampleBox: {
     padding: 20,
-    borderRadius: 0,
     background: "#eef0d2",
     border: "1px solid rgba(7, 16, 12, 0.14)",
   },
@@ -2102,7 +2561,6 @@ const styles: Record<string, CSSProperties> = {
   },
   briefingExample: {
     padding: 16,
-    borderRadius: 0,
     background: "#fffdf4",
     border: "1px solid rgba(7, 16, 12, 0.12)",
   },
@@ -2130,7 +2588,6 @@ const styles: Record<string, CSSProperties> = {
   secondaryButton: {
     minHeight: 48,
     border: "1px solid rgba(7, 16, 12, 0.2)",
-    borderRadius: 0,
     background: "#fffdf4",
     color: "#07100c",
     padding: "0 18px",
@@ -2232,21 +2689,6 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.76,
     wordBreak: "keep-all",
   },
-  buildFormMock: {
-    padding: 22,
-    border: "1px solid rgba(247, 241, 223, 0.32)",
-    background: "rgba(247, 241, 223, 0.92)",
-    color: "#07100c",
-  },
-  buildFormTitle: {
-    margin: "0 0 16px",
-    color: "#07100c",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 18,
-    lineHeight: 1.5,
-    letterSpacing: "-0.04em",
-    fontWeight: 600,
-  },
   buildConditionBox: {
     marginTop: 22,
     padding: 16,
@@ -2277,6 +2719,21 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.7,
     wordBreak: "keep-all",
   },
+  buildFormMock: {
+    padding: 22,
+    border: "1px solid rgba(247, 241, 223, 0.32)",
+    background: "rgba(247, 241, 223, 0.92)",
+    color: "#07100c",
+  },
+  buildFormTitle: {
+    margin: "0 0 16px",
+    color: "#07100c",
+    fontFamily: notoSerifKr.style.fontFamily,
+    fontSize: 18,
+    lineHeight: 1.5,
+    letterSpacing: "-0.04em",
+    fontWeight: 600,
+  },
   buildLabel: {
     display: "flex",
     flexDirection: "column",
@@ -2290,7 +2747,6 @@ const styles: Record<string, CSSProperties> = {
   buildInput: {
     width: "100%",
     height: 50,
-    borderRadius: 0,
     border: "1px solid rgba(7, 16, 12, 0.18)",
     background: "#fffdf4",
     color: "#07100c",
@@ -2302,7 +2758,6 @@ const styles: Record<string, CSSProperties> = {
   buildTextarea: {
     width: "100%",
     minHeight: 94,
-    borderRadius: 0,
     border: "1px solid rgba(7, 16, 12, 0.18)",
     background: "#fffdf4",
     color: "#07100c",
@@ -2317,7 +2772,6 @@ const styles: Record<string, CSSProperties> = {
   buildTextareaSmall: {
     width: "100%",
     minHeight: 74,
-    borderRadius: 0,
     border: "1px solid rgba(7, 16, 12, 0.18)",
     background: "#fffdf4",
     color: "#07100c",
