@@ -19,6 +19,8 @@ type Subscriber = {
   blocker: string | null;
   action_time: string | null;
   persona_type: string | null;
+  is_active: boolean | null;
+  unsubscribed_at: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -94,6 +96,14 @@ type FeedbackGroupCounts = {
     action_not_done: number;
     unknown: number;
   };
+};
+
+type SubscriberStats = {
+  total: number;
+  active: number;
+  inactive: number;
+  unsubscribed: number;
+  unknown: number;
 };
 
 type NewsletterItemWithFeedbackStats = NewsletterItem & {
@@ -331,6 +341,48 @@ function countByBoolean<T>(
   }
 
   return counts;
+}
+
+function getSubscriberStats(subscribers: Subscriber[]): SubscriberStats {
+  const total = subscribers.length;
+  const active = subscribers.filter(
+    (subscriber) => subscriber.is_active === true
+  ).length;
+  const inactive = subscribers.filter(
+    (subscriber) => subscriber.is_active === false
+  ).length;
+  const unknown = subscribers.filter(
+    (subscriber) => typeof subscriber.is_active !== "boolean"
+  ).length;
+  const unsubscribed = subscribers.filter(
+    (subscriber) =>
+      subscriber.is_active === false || Boolean(subscriber.unsubscribed_at)
+  ).length;
+
+  return {
+    total,
+    active,
+    inactive,
+    unsubscribed,
+    unknown,
+  };
+}
+
+function getRecentUnsubscribedSubscribers(subscribers: Subscriber[]) {
+  return subscribers
+    .filter(
+      (subscriber) =>
+        subscriber.is_active === false || Boolean(subscriber.unsubscribed_at)
+    )
+    .sort((a, b) => {
+      const aTime = new Date(a.unsubscribed_at || a.updated_at || a.created_at)
+        .getTime();
+      const bTime = new Date(b.unsubscribed_at || b.updated_at || b.created_at)
+        .getTime();
+
+      return bTime - aTime;
+    })
+    .slice(0, 20);
 }
 
 function getCategoryAnswerCounts(answers: SubscriberCategoryAnswer[]) {
@@ -853,11 +905,27 @@ async function fetchSubscribersWithFallback(
     blocker,
     action_time,
     persona_type,
+    is_active,
+    unsubscribed_at,
     created_at,
     updated_at
   `;
 
-  const fallbackSelect = `
+  const fallbackSelectWithoutSubscriptionColumns = `
+    id,
+    email,
+    job_role,
+    difficulty,
+    ai_emotion,
+    ai_intent,
+    blocker,
+    action_time,
+    persona_type,
+    created_at,
+    updated_at
+  `;
+
+  const fallbackSelectWithoutUpdatedAt = `
     id,
     email,
     job_role,
@@ -880,12 +948,35 @@ async function fetchSubscribersWithFallback(
       data: (firstResult.data || []) as Subscriber[],
       error: null,
       usedFallback: false,
+      missingSubscriptionColumns: false,
+      missingUpdatedAtColumn: false,
+    };
+  }
+
+  const secondResult = await supabaseAdmin
+    .from("subscribers")
+    .select(fallbackSelectWithoutSubscriptionColumns)
+    .order("created_at", { ascending: false });
+
+  if (!secondResult.error) {
+    const subscribers = (secondResult.data || []).map((subscriber) => ({
+      ...subscriber,
+      is_active: true,
+      unsubscribed_at: null,
+    })) as Subscriber[];
+
+    return {
+      data: subscribers,
+      error: null,
+      usedFallback: true,
+      missingSubscriptionColumns: true,
+      missingUpdatedAtColumn: false,
     };
   }
 
   const fallbackResult = await supabaseAdmin
     .from("subscribers")
-    .select(fallbackSelect)
+    .select(fallbackSelectWithoutUpdatedAt)
     .order("created_at", { ascending: false });
 
   if (fallbackResult.error) {
@@ -893,11 +984,15 @@ async function fetchSubscribersWithFallback(
       data: [],
       error: fallbackResult.error,
       usedFallback: true,
+      missingSubscriptionColumns: true,
+      missingUpdatedAtColumn: true,
     };
   }
 
   const subscribers = (fallbackResult.data || []).map((subscriber) => ({
     ...subscriber,
+    is_active: true,
+    unsubscribed_at: null,
     updated_at: null,
   })) as Subscriber[];
 
@@ -905,6 +1000,8 @@ async function fetchSubscribersWithFallback(
     data: subscribers,
     error: null,
     usedFallback: true,
+    missingSubscriptionColumns: true,
+    missingUpdatedAtColumn: true,
   };
 }
 
@@ -1001,6 +1098,10 @@ async function getAdminStats(request: NextRequest, body?: RequestBody) {
   }
 
   const safeSubscribers = subscribersResult.data;
+  const subscriberStats = getSubscriberStats(safeSubscribers);
+  const recentUnsubscribedSubscribers =
+    getRecentUnsubscribedSubscribers(safeSubscribers);
+
   const subscriberIds = safeSubscribers.map((subscriber) => subscriber.id);
 
   const { data: categoryAnswers, error: categoryAnswersError } =
@@ -1158,7 +1259,13 @@ async function getAdminStats(request: NextRequest, body?: RequestBody) {
 
   const fallbackWarnings: string[] = [];
 
-  if (subscribersResult.usedFallback) {
+  if (subscribersResult.missingSubscriptionColumns) {
+    fallbackWarnings.push(
+      "subscribers.is_active 또는 subscribers.unsubscribed_at 컬럼이 없어 구독 상태는 기본 활성으로 표시됩니다. SQL 마이그레이션을 확인하세요."
+    );
+  }
+
+  if (subscribersResult.missingUpdatedAtColumn) {
     fallbackWarnings.push(
       "subscribers.updated_at 컬럼이 없어 updated_at은 null로 표시됩니다."
     );
@@ -1178,9 +1285,14 @@ async function getAdminStats(request: NextRequest, body?: RequestBody) {
         : "관리자 데이터를 불러왔습니다.",
 
     totalSubscribers: safeSubscribers.length,
+    activeSubscribers: subscriberStats.active,
+    inactiveSubscribers: subscriberStats.inactive,
+    unsubscribedSubscribers: subscriberStats.unsubscribed,
     totalFeedbacks: safeFeedbacks.length,
     totalNewsletterItems: newsletterStats.total,
     totalDeliveryLogs: safeDeliveryLogs.length,
+
+    subscriberStats,
 
     personaCounts: countByValue(
       safeSubscribers,
@@ -1249,6 +1361,7 @@ async function getAdminStats(request: NextRequest, body?: RequestBody) {
     operationReview,
 
     recentSubscribers: safeSubscribers.slice(0, 50),
+    recentUnsubscribedSubscribers,
     recentFeedbacks,
     recentDeliveryLogs,
     recentNewsletterItems,

@@ -1,25 +1,47 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+
+type MessageType = "success" | "error" | "info";
 
 function UnsubscribeContent() {
   const searchParams = useSearchParams();
-  const emailFromQuery = searchParams.get("email") || "";
 
-  const [email, setEmail] = useState(emailFromQuery);
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "info">(
-    "info"
-  );
+  const [messageType, setMessageType] = useState<MessageType>("info");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  useEffect(() => {
+    const emailFromQuery = searchParams.get("email") || "";
+
+    if (emailFromQuery) {
+      setEmail(emailFromQuery.trim().toLowerCase());
+    }
+  }, [searchParams]);
+
+  const isValidEmail = useMemo(() => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  }, [email]);
 
   const handleUnsubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     setMessage("");
     setMessageType("info");
+
+    if (!normalizedEmail || !isValidEmail) {
+      setMessage("올바른 이메일 주소를 입력해주세요.");
+      setMessageType("error");
+      return;
+    }
+
     setIsLoading(true);
+    setIsCompleted(false);
 
     try {
       const res = await fetch("/api/unsubscribe", {
@@ -28,7 +50,7 @@ function UnsubscribeContent() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
+          email: normalizedEmail,
         }),
       });
 
@@ -44,7 +66,7 @@ function UnsubscribeContent() {
 
       setMessage(data.message || "구독 해지가 완료되었습니다.");
       setMessageType("success");
-      setEmail("");
+      setIsCompleted(true);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "알 수 없는 오류";
@@ -93,7 +115,7 @@ function UnsubscribeContent() {
               margin: "0 0 14px 0",
             }}
           >
-            모순책장 브리프
+            Mosun Brief
           </p>
 
           <h1
@@ -104,7 +126,7 @@ function UnsubscribeContent() {
               margin: "0 0 10px 0",
             }}
           >
-            구독 해지
+            구독 취소
           </h1>
 
           <p
@@ -115,8 +137,8 @@ function UnsubscribeContent() {
               margin: 0,
             }}
           >
-            더 이상 모순책장 브리프를 받고 싶지 않다면 이메일을 입력해
-            구독을 해지할 수 있습니다.
+            더 이상 Mosun Brief를 받고 싶지 않다면 이메일을 확인한 뒤 구독을
+            취소할 수 있습니다.
           </p>
         </div>
 
@@ -134,15 +156,25 @@ function UnsubscribeContent() {
               type="email"
               placeholder="example@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setMessage("");
+                setMessageType("info");
+                setIsCompleted(false);
+              }}
               required
-              style={inputStyle}
+              disabled={isLoading || isCompleted}
+              style={{
+                ...inputStyle,
+                backgroundColor: isCompleted ? "#f9fafb" : "white",
+                color: isCompleted ? "#6b7280" : "#111827",
+              }}
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isCompleted}
             style={{
               width: "100%",
               border: "none",
@@ -151,11 +183,19 @@ function UnsubscribeContent() {
               fontSize: 16,
               fontWeight: 900,
               color: "white",
-              backgroundColor: isLoading ? "#9ca3af" : "#111827",
-              cursor: isLoading ? "not-allowed" : "pointer",
+              backgroundColor: isCompleted
+                ? "#10b981"
+                : isLoading
+                ? "#9ca3af"
+                : "#111827",
+              cursor: isLoading || isCompleted ? "not-allowed" : "pointer",
             }}
           >
-            {isLoading ? "처리 중..." : "구독 해지하기"}
+            {isLoading
+              ? "처리 중..."
+              : isCompleted
+              ? "구독 취소 완료"
+              : "구독 취소하기"}
           </button>
         </form>
 

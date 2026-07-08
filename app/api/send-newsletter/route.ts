@@ -21,6 +21,8 @@ type Subscriber = {
   blocker: string | null;
   action_time: string | null;
   persona_type: string | null;
+  is_active: boolean | null;
+  unsubscribed_at: string | null;
 };
 
 type SubscriberCategoryAnswer = {
@@ -282,6 +284,13 @@ function getProfileUrl(subscriber: Subscriber) {
   params.set("email", subscriber.email);
 
   return `${getSiteUrl()}/profile?${params.toString()}`;
+}
+
+function getUnsubscribeUrl(subscriber: Subscriber) {
+  const params = new URLSearchParams();
+  params.set("email", subscriber.email);
+
+  return `${getSiteUrl()}/unsubscribe?${params.toString()}`;
 }
 
 function getReadablePersona(subscriber: Subscriber) {
@@ -1016,6 +1025,24 @@ function buildProfileLinkHtml(subscriber: Subscriber) {
   `;
 }
 
+function buildEmailFooterHtml(subscriber: Subscriber) {
+  const privacyUrl = escapeHtml(`${getSiteUrl()}/privacy`);
+  const unsubscribeUrl = escapeHtml(getUnsubscribeUrl(subscriber));
+
+  return `
+    <div style="margin-top:18px;text-align:center;">
+      <p style="margin:0;font-size:12px;line-height:1.7;color:#9ca3af;">
+        이 메일은 Mosun Brief 구독 신청자에게 발송되었습니다.
+      </p>
+      <p style="margin:8px 0 0;font-size:12px;line-height:1.7;color:#9ca3af;">
+        <a href="${privacyUrl}" style="color:#6b7280;text-decoration:underline;">개인정보처리방침</a>
+        <span style="color:#d1d5db;"> · </span>
+        <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">구독 취소</a>
+      </p>
+    </div>
+  `;
+}
+
 function buildNewsletterHtml({
   subscriber,
   scoredItems,
@@ -1197,6 +1224,8 @@ function buildNewsletterHtml({
             이 메일은 AI-FU MVP 테스트/운영 발송입니다.
           </p>
         </div>
+
+        ${buildEmailFooterHtml(subscriber)}
       </div>
     </div>
   `;
@@ -1264,6 +1293,8 @@ function makeTestSubscriber(testEmail: string, baseSubscriber?: Subscriber) {
     blocker: baseSubscriber?.blocker || "too_much_info",
     action_time: baseSubscriber?.action_time || "30min",
     persona_type: baseSubscriber?.persona_type || "Test",
+    is_active: true,
+    unsubscribed_at: null,
   };
 }
 
@@ -1642,10 +1673,13 @@ export async function POST(request: Request) {
         ai_intent,
         blocker,
         action_time,
-        persona_type
+        persona_type,
+        is_active,
+        unsubscribed_at
       `
       )
       .not("email", "is", null)
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (subscribersError) {
@@ -1658,7 +1692,7 @@ export async function POST(request: Request) {
     if (!subscribers || subscribers.length === 0) {
       return NextResponse.json({
         ok: false,
-        message: "발송 기준으로 사용할 구독자가 없습니다.",
+        message: "발송 기준으로 사용할 활성 구독자가 없습니다.",
       });
     }
 
@@ -1792,6 +1826,7 @@ export async function POST(request: Request) {
           subscriberEmail: subscriber.email,
           persona: getReadablePersonaKorean(subscriber),
           profileUrl: getProfileUrl(subscriber),
+          unsubscribeUrl: getUnsubscribeUrl(subscriber),
           answers: getSubscriberAnswers(subscriber, answersBySubscriberId),
           alreadySentItemIds,
           alreadyReceivedToday,
@@ -1882,6 +1917,7 @@ export async function POST(request: Request) {
         message: `테스트 브리프 발송 완료: ${testEmail}`,
         mode: "test",
         profileUrl: getProfileUrl(testSubscriber),
+        unsubscribeUrl: getUnsubscribeUrl(testSubscriber),
         selectedItemIds: selectedScoredItems.map((entry) => entry.item.id),
         selectedItems: selectedScoredItems.map((entry) => ({
           id: entry.item.id,
@@ -1903,6 +1939,7 @@ export async function POST(request: Request) {
     const sentDetails: {
       subscriber_email: string;
       profile_url: string;
+      unsubscribe_url: string;
       item_ids: number[];
       scores: {
         item_id: number;
@@ -2001,6 +2038,7 @@ export async function POST(request: Request) {
         sentDetails.push({
           subscriber_email: subscriber.email,
           profile_url: getProfileUrl(subscriber),
+          unsubscribe_url: getUnsubscribeUrl(subscriber),
           item_ids: selectedScoredItems.map((entry) => entry.item.id),
           scores: scoreDetails,
         });
@@ -2075,7 +2113,7 @@ export async function POST(request: Request) {
       updatedItemIds: [],
       failedReasons,
       sentDetails,
-      note: "A-4 재발송 정책 적용: 자료 자체는 재사용 가능하며, 같은 구독자에게 이미 sent 로그가 있는 자료만 제외합니다. D-1 수정 적용: 하루 1회 메일 제한은 newsletter_daily_send_locks로 관리하고, newsletter_delivery_logs는 자료별 발송 기록으로 유지합니다. D-6 적용: 이메일 하단에 /profile 재진단 링크가 포함됩니다.",
+      note: "A-4 재발송 정책 적용: 자료 자체는 재사용 가능하며, 같은 구독자에게 이미 sent 로그가 있는 자료만 제외합니다. D-1 수정 적용: 하루 1회 메일 제한은 newsletter_daily_send_locks로 관리하고, newsletter_delivery_logs는 자료별 발송 기록으로 유지합니다. D-6 적용: 이메일 하단에 /profile 재진단 링크가 포함됩니다. D-7 적용: is_active=true 구독자에게만 발송하고 이메일 하단에 /unsubscribe 구독 취소 링크가 포함됩니다.",
     });
   } catch (error) {
     const message =

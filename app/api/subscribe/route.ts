@@ -195,6 +195,10 @@ export async function POST(request: Request) {
       blocker,
       action_time: actionTime,
       persona_type: personaType,
+
+      // 구독 취소했던 이메일이 다시 신청하면 여기서 복구됩니다.
+      is_active: true,
+      unsubscribed_at: null,
     };
 
     const { data: subscriber, error: subscriberError } = await supabase
@@ -202,7 +206,7 @@ export async function POST(request: Request) {
       .upsert(subscriberPayload, {
         onConflict: "email",
       })
-      .select("id, email")
+      .select("id, email, is_active, unsubscribed_at")
       .single();
 
     if (subscriberError) {
@@ -271,10 +275,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       message:
-        "구독 정보가 저장되었습니다. 같은 이메일로 다시 신청한 경우 기존 정보가 업데이트됩니다.",
+        "구독 정보가 저장되었습니다. 같은 이메일로 다시 신청한 경우 구독 상태와 진단 정보가 업데이트됩니다.",
       subscriber: {
         id: subscriber.id,
         email: subscriber.email,
+        is_active: subscriber.is_active,
+        unsubscribed_at: subscriber.unsubscribed_at,
       },
     });
   } catch (error) {

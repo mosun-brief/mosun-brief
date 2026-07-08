@@ -43,6 +43,14 @@ type NewsletterStats = {
   byActiveStatus: BooleanCounts;
 };
 
+type SubscriberStats = {
+  total: number;
+  active: number;
+  inactive: number;
+  unsubscribed: number;
+  unknown: number;
+};
+
 type RecentSubscriber = {
   id: string;
   email: string;
@@ -53,6 +61,8 @@ type RecentSubscriber = {
   blocker: string | null;
   action_time: string | null;
   persona_type: string | null;
+  is_active?: boolean | null;
+  unsubscribed_at?: string | null;
   created_at: string;
   updated_at?: string | null;
 };
@@ -134,6 +144,7 @@ type OperationReview = {
 type SentDetail = {
   subscriber_email: string;
   profile_url?: string;
+  unsubscribe_url?: string;
   item_ids: number[];
   scores?: {
     item_id: number;
@@ -154,9 +165,14 @@ type AdminStatsResult = {
   message?: string;
 
   totalSubscribers?: number;
+  activeSubscribers?: number;
+  inactiveSubscribers?: number;
+  unsubscribedSubscribers?: number;
   totalFeedbacks?: number;
   totalNewsletterItems?: number;
   totalDeliveryLogs?: number;
+
+  subscriberStats?: SubscriberStats;
 
   personaCounts?: CountRow[];
   aiEmotionCounts?: CountRow[];
@@ -182,6 +198,7 @@ type AdminStatsResult = {
   operationReview?: OperationReview;
 
   recentSubscribers?: RecentSubscriber[];
+  recentUnsubscribedSubscribers?: RecentSubscriber[];
   recentFeedbacks?: RecentFeedback[];
   recentDeliveryLogs?: RecentDeliveryLog[];
   recentNewsletterItems?: RecentNewsletterItem[];
@@ -197,6 +214,7 @@ type SendResult = {
   successCount?: number;
   failCount?: number;
   skippedSubscriberCount?: number;
+  skippedTodayCount?: number;
   selectedItemIds?: number[];
   updatedItemIds?: number[];
   failedReasons?: string[];
@@ -421,6 +439,96 @@ function getSubscriberStatusTone(subscriber: RecentSubscriber) {
   return "red";
 }
 
+function getSubscriptionLabel(subscriber: RecentSubscriber) {
+  if (subscriber.is_active === false) return "구독 취소";
+  if (subscriber.is_active === true) return "활성";
+  return "미확인";
+}
+
+function getSubscriptionTone(subscriber: RecentSubscriber) {
+  if (subscriber.is_active === false) return "red";
+  if (subscriber.is_active === true) return "green";
+  return "gray";
+}
+
+function getDerivedSubscriberStats(stats: AdminStatsResult): SubscriberStats {
+  const recentSubscribers = stats.recentSubscribers || [];
+
+  const activeFromRecent = recentSubscribers.filter(
+    (subscriber) => subscriber.is_active === true
+  ).length;
+
+  const inactiveFromRecent = recentSubscribers.filter(
+    (subscriber) => subscriber.is_active === false
+  ).length;
+
+  const unknownFromRecent = recentSubscribers.filter(
+    (subscriber) => typeof subscriber.is_active !== "boolean"
+  ).length;
+
+  const unsubscribedFromRecent = recentSubscribers.filter(
+    (subscriber) =>
+      subscriber.is_active === false || Boolean(subscriber.unsubscribed_at)
+  ).length;
+
+  const total =
+    stats.subscriberStats?.total ??
+    stats.totalSubscribers ??
+    recentSubscribers.length ??
+    0;
+
+  const active =
+    stats.subscriberStats?.active ??
+    stats.activeSubscribers ??
+    activeFromRecent;
+
+  const inactive =
+    stats.subscriberStats?.inactive ??
+    stats.inactiveSubscribers ??
+    inactiveFromRecent;
+
+  const unsubscribed =
+    stats.subscriberStats?.unsubscribed ??
+    stats.unsubscribedSubscribers ??
+    unsubscribedFromRecent;
+
+  const unknown =
+    stats.subscriberStats?.unknown ??
+    Math.max(0, total - active - inactive) ??
+    unknownFromRecent;
+
+  return {
+    total,
+    active,
+    inactive,
+    unsubscribed,
+    unknown,
+  };
+}
+
+function getRecentUnsubscribedSubscribers(stats: AdminStatsResult) {
+  const explicit = stats.recentUnsubscribedSubscribers || [];
+
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  return (stats.recentSubscribers || [])
+    .filter(
+      (subscriber) =>
+        subscriber.is_active === false || Boolean(subscriber.unsubscribed_at)
+    )
+    .sort((a, b) => {
+      const aTime = new Date(a.unsubscribed_at || a.updated_at || a.created_at)
+        .getTime();
+      const bTime = new Date(b.unsubscribed_at || b.updated_at || b.created_at)
+        .getTime();
+
+      return bTime - aTime;
+    })
+    .slice(0, 10);
+}
+
 async function readApiResponse(response: Response): Promise<ApiResult> {
   const text = await response.text();
 
@@ -602,7 +710,7 @@ export default function AdminPage() {
       mode === "test"
         ? window.confirm(`${testEmail.trim()} 으로 테스트 브리프를 발송할까요?`)
         : window.confirm(
-            "전체 브리프를 발송할까요? newsletter_delivery_logs 기준으로 이미 받은 자료는 중복 발송되지 않습니다."
+            "전체 브리프를 발송할까요? 구독 취소자는 제외되고, newsletter_delivery_logs 기준으로 이미 받은 자료는 중복 발송되지 않습니다."
           );
 
     if (!confirmed) return;
@@ -653,8 +761,8 @@ export default function AdminPage() {
         <p style={styles.badge}>Personal AI Briefing Admin</p>
         <h1 style={styles.title}>운영 대시보드</h1>
         <p style={styles.description}>
-          구독자, 뉴스 자료, 피드백, 발송 로그, Personal AI Build 상담 신청을
-          확인하고 오늘 운영 가능한 상태인지 점검합니다.
+          구독자, 구독 상태, 뉴스 자료, 피드백, 발송 로그, Personal AI Build 상담
+          신청을 확인하고 오늘 운영 가능한 상태인지 점검합니다.
         </p>
       </section>
 
@@ -748,6 +856,14 @@ export default function AdminPage() {
 
           <a href="/admin/newsletter-items" style={styles.adminLink}>
             뉴스 자료 등록
+          </a>
+
+          <a href="/privacy" style={styles.adminLink}>
+            개인정보처리방침
+          </a>
+
+          <a href="/unsubscribe" style={styles.adminLink}>
+            구독 취소 화면
           </a>
 
           <a href="/" style={styles.adminLink}>
@@ -901,14 +1017,25 @@ function StatsDashboard({ stats }: { stats: AdminStatsResult }) {
   const newsletterStats = stats.newsletterStats;
   const reactionRows = getReactionRows(stats);
   const executionRows = getExecutionRows(stats);
+  const subscriberStats = getDerivedSubscriberStats(stats);
 
   return (
     <section style={styles.dashboard}>
       <div style={styles.summaryGrid}>
         <SummaryCard
-          label="구독자"
-          value={stats.totalSubscribers ?? 0}
+          label="전체 구독자"
+          value={subscriberStats.total}
           help="현재 저장된 전체 구독자"
+        />
+        <SummaryCard
+          label="활성 구독자"
+          value={subscriberStats.active}
+          help="실제 브리핑 발송 대상"
+        />
+        <SummaryCard
+          label="구독 취소"
+          value={subscriberStats.unsubscribed}
+          help="is_active=false 또는 unsubscribed_at 있음"
         />
         <SummaryCard
           label="피드백"
@@ -926,6 +1053,8 @@ function StatsDashboard({ stats }: { stats: AdminStatsResult }) {
           help="중복 발송 방지 기준 로그"
         />
       </div>
+
+      <SubscriptionOverviewPanel stats={stats} />
 
       <SubscriberStatusOverviewPanel stats={stats} />
 
@@ -1028,6 +1157,119 @@ function StatsDashboard({ stats }: { stats: AdminStatsResult }) {
   );
 }
 
+function SubscriptionOverviewPanel({ stats }: { stats: AdminStatsResult }) {
+  const subscriberStats = getDerivedSubscriberStats(stats);
+  const recentUnsubscribedSubscribers = getRecentUnsubscribedSubscribers(stats);
+
+  const activePercent =
+    subscriberStats.total > 0
+      ? Math.round((subscriberStats.active / subscriberStats.total) * 100)
+      : 0;
+
+  const unsubscribePercent =
+    subscriberStats.total > 0
+      ? Math.round((subscriberStats.unsubscribed / subscriberStats.total) * 100)
+      : 0;
+
+  return (
+    <section style={styles.subscriptionPanel}>
+      <div style={styles.subscriptionHeader}>
+        <div>
+          <p style={styles.subscriptionBadge}>구독 상태</p>
+          <h2 style={styles.panelTitle}>활성 / 구독 취소 현황</h2>
+          <p style={styles.reviewDescription}>
+            전체 발송은 is_active=true 구독자만 대상으로 진행됩니다. 구독 취소자는
+            발송 preview와 전체 발송에서 제외되어야 합니다.
+          </p>
+        </div>
+
+        <div style={styles.subscriptionPercentBox}>
+          <span style={styles.subscriptionPercent}>{activePercent}%</span>
+          <span style={styles.subscriptionPercentLabel}>활성 비율</span>
+        </div>
+      </div>
+
+      <div style={styles.summaryGrid}>
+        <SummaryCard
+          label="전체 구독자"
+          value={subscriberStats.total}
+          help="저장된 전체 이메일"
+          compact
+        />
+        <SummaryCard
+          label="활성 구독자"
+          value={subscriberStats.active}
+          help="브리핑 발송 대상"
+          compact
+        />
+        <SummaryCard
+          label="비활성 구독자"
+          value={subscriberStats.inactive}
+          help="발송 제외 대상"
+          compact
+        />
+        <SummaryCard
+          label="구독 취소"
+          value={subscriberStats.unsubscribed}
+          help={`전체 대비 ${unsubscribePercent}%`}
+          compact
+        />
+      </div>
+
+      <div style={styles.subscriptionGuideBox}>
+        <strong style={styles.subscriptionGuideTitle}>운영 확인 기준</strong>
+        <p style={styles.subscriptionGuideText}>
+          구독 취소를 누른 이메일은 subscribers.is_active=false,
+          unsubscribed_at=시간값으로 바뀌어야 합니다. 이후 같은 이메일로 다시
+          구독하면 is_active=true, unsubscribed_at=null로 복구되어야 합니다.
+        </p>
+      </div>
+
+      <h3 style={styles.subTitle}>최근 구독 취소</h3>
+
+      {recentUnsubscribedSubscribers.length === 0 ? (
+        <p style={styles.emptyText}>최근 구독 취소자가 없습니다.</p>
+      ) : (
+        <div style={styles.tableWrap}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>상태</th>
+                <th style={styles.th}>이메일</th>
+                <th style={styles.th}>구독 취소 시각</th>
+                <th style={styles.th}>최근 갱신</th>
+                <th style={styles.th}>목적</th>
+                <th style={styles.th}>막힘</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentUnsubscribedSubscribers.map((subscriber) => (
+                <tr key={subscriber.id}>
+                  <td style={styles.td}>
+                    <StatusBadge label="구독 취소" tone="red" />
+                  </td>
+                  <td style={styles.td}>
+                    <strong>{subscriber.email}</strong>
+                    <div style={styles.smallMuted}>
+                      {subscriber.job_role || "직업/상황 미입력"}
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    {formatDate(subscriber.unsubscribed_at)}
+                  </td>
+                  <td style={styles.td}>{formatDate(subscriber.updated_at)}</td>
+                  <td style={styles.td}>{labelOf(subscriber.ai_intent)}</td>
+                  <td style={styles.td}>{labelOf(subscriber.blocker)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
   const subscribers = stats.recentSubscribers || [];
   const recentFeedbackByEmail = useMemo(
@@ -1063,8 +1305,8 @@ function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
           <p style={styles.subscriberStatusBadge}>구독자 상태</p>
           <h2 style={styles.panelTitle}>구독자 상태 / 재진단 확인</h2>
           <p style={styles.reviewDescription}>
-            최근 구독자 기준으로 현재 AI 감정, 목적, 막힘, 행동 시간, 난이도,
-            최근 피드백과 최근 발송 로그를 한 번에 확인합니다.
+            최근 구독자 기준으로 현재 구독 상태, AI 감정, 목적, 막힘, 행동 시간,
+            난이도, 최근 피드백과 최근 발송 로그를 한 번에 확인합니다.
           </p>
         </div>
 
@@ -1119,7 +1361,8 @@ function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>상태</th>
+                <th style={styles.th}>구독</th>
+                <th style={styles.th}>진단</th>
                 <th style={styles.th}>이메일</th>
                 <th style={styles.th}>감정</th>
                 <th style={styles.th}>목적</th>
@@ -1139,6 +1382,17 @@ function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
 
                 return (
                   <tr key={subscriber.id}>
+                    <td style={styles.td}>
+                      <StatusBadge
+                        label={getSubscriptionLabel(subscriber)}
+                        tone={getSubscriptionTone(subscriber)}
+                      />
+                      {subscriber.unsubscribed_at && (
+                        <div style={styles.smallMuted}>
+                          취소 {formatDate(subscriber.unsubscribed_at)}
+                        </div>
+                      )}
+                    </td>
                     <td style={styles.td}>
                       <StatusBadge
                         label={getSubscriberStatusLabel(subscriber)}
@@ -1222,9 +1476,12 @@ function SubscriberStatusOverviewPanel({ stats }: { stats: AdminStatsResult }) {
 function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
   const newsletterStats = stats.newsletterStats;
   const review = stats.operationReview;
+  const subscriberStats = getDerivedSubscriberStats(stats);
 
   const activeItemCount = newsletterStats?.active ?? 0;
-  const subscriberCount = stats.totalSubscribers ?? 0;
+  const subscriberCount = subscriberStats.total;
+  const activeSubscriberCount = subscriberStats.active;
+  const unsubscribedCount = subscriberStats.unsubscribed;
   const feedbackCount = stats.totalFeedbacks ?? 0;
   const recommendationCount = review?.nextContentRecommendations.length ?? 0;
 
@@ -1247,15 +1504,26 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
           actionLabel: "자료 등록/관리",
         },
         {
-          title: "구독자 상태 상세",
-          value: "준비됨",
-          status: subscriberCount > 0 ? "ready" : "warning",
+          title: "활성 구독자",
+          value: `${activeSubscriberCount.toLocaleString("ko-KR")}명`,
+          status: activeSubscriberCount > 0 ? "ready" : "blocked",
           help:
-            subscriberCount > 0
-              ? "구독자별 상태, 피드백, 발송 로그를 상세 화면에서 확인할 수 있습니다."
-              : "구독자가 생기면 상세 화면에서 상태를 확인할 수 있습니다.",
+            activeSubscriberCount > 0
+              ? "is_active=true 구독자만 전체 발송 대상입니다."
+              : "활성 구독자가 없습니다. 구독 신청 또는 재구독을 확인하세요.",
           href: "/admin/subscribers",
           actionLabel: "구독자 상세 열기",
+        },
+        {
+          title: "구독 취소자 제외",
+          value: `${unsubscribedCount.toLocaleString("ko-KR")}명`,
+          status: "ready",
+          help:
+            unsubscribedCount > 0
+              ? "구독 취소자는 발송 대상에서 제외되어야 합니다."
+              : "현재 확인되는 구독 취소자가 없습니다.",
+          href: "/unsubscribe",
+          actionLabel: "구독 취소 화면",
         },
         {
           title: "구독자 수",
@@ -1263,7 +1531,7 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
           status: subscriberCount > 0 ? "ready" : "blocked",
           help:
             subscriberCount > 0
-              ? "발송 대상 구독자가 있습니다."
+              ? "구독자 데이터가 있습니다."
               : "구독자가 없습니다. 구독 신청 화면에서 테스트 구독자를 먼저 등록하세요.",
           href: "/",
           actionLabel: "구독 신청 화면",
@@ -1272,11 +1540,13 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
           title: "발송 전 미리보기",
           value: "필수 확인",
           status:
-            activeItemCount > 0 && subscriberCount > 0 ? "ready" : "warning",
+            activeItemCount > 0 && activeSubscriberCount > 0
+              ? "ready"
+              : "warning",
           help:
-            activeItemCount > 0 && subscriberCount > 0
-              ? "전체 발송 전 구독자별 매칭 결과를 확인하세요."
-              : "자료와 구독자가 준비된 뒤 미리보기를 확인하세요.",
+            activeItemCount > 0 && activeSubscriberCount > 0
+              ? "전체 발송 전 구독자별 매칭 결과와 구독 취소자 제외 여부를 확인하세요."
+              : "자료와 활성 구독자가 준비된 뒤 미리보기를 확인하세요.",
           href: "/admin/send-preview",
           actionLabel: "미리보기 열기",
         },
@@ -1316,7 +1586,9 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
       ] as const,
     [
       activeItemCount,
+      activeSubscriberCount,
       subscriberCount,
+      unsubscribedCount,
       recentFailedLogs.length,
       feedbackCount,
       recommendationCount,
@@ -1342,7 +1614,7 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
       ? "막힌 항목을 먼저 해결한 뒤 발송 전 미리보기를 확인하세요."
       : warningCount > 0
       ? "발송은 가능하지만, 노란색 항목을 확인하면 운영 안정성이 좋아집니다."
-      : "자료, 구독자, 미리보기, 회고 흐름이 모두 준비되어 있습니다.";
+      : "자료, 활성 구독자, 미리보기, 구독 취소 제외, 회고 흐름이 모두 준비되어 있습니다.";
 
   return (
     <section style={styles.checklistPanel}>
@@ -1351,8 +1623,8 @@ function OperationChecklistPanel({ stats }: { stats: AdminStatsResult }) {
           <p style={styles.checklistBadge}>운영 체크리스트</p>
           <h2 style={styles.panelTitle}>오늘 발송 전 최종 점검</h2>
           <p style={styles.reviewDescription}>
-            전체 발송 전에 자료, 구독자, 미리보기, 실패 로그, 피드백, 다음 등록
-            방향을 한 번에 확인합니다.
+            전체 발송 전에 자료, 활성 구독자, 구독 취소자 제외, 미리보기, 실패
+            로그, 피드백, 다음 등록 방향을 한 번에 확인합니다.
           </p>
         </div>
 
@@ -1661,7 +1933,13 @@ function SendResultPanel({ result }: { result: SendResult }) {
         <SummaryCard
           label="스킵"
           value={result.skippedSubscriberCount ?? 0}
-          help="이미 받은 자료만 남아 제외"
+          help="이미 받은 자료만 남거나 오늘 이미 받아 제외"
+          compact
+        />
+        <SummaryCard
+          label="오늘 이미 받음"
+          value={result.skippedTodayCount ?? 0}
+          help="하루 1회 제한으로 제외"
           compact
         />
         <SummaryCard
@@ -1706,6 +1984,7 @@ function SendResultPanel({ result }: { result: SendResult }) {
                 <tr>
                   <th style={styles.th}>이메일</th>
                   <th style={styles.th}>재진단</th>
+                  <th style={styles.th}>구독 취소</th>
                   <th style={styles.th}>자료 ID</th>
                   <th style={styles.th}>점수</th>
                 </tr>
@@ -1722,6 +2001,18 @@ function SendResultPanel({ result }: { result: SendResult }) {
                       {detail.profile_url ? (
                         <a href={detail.profile_url} style={styles.smallActionLink}>
                           재진단 링크
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      {detail.unsubscribe_url ? (
+                        <a
+                          href={detail.unsubscribe_url}
+                          style={styles.smallDangerLink}
+                        >
+                          구독 취소 링크
                         </a>
                       ) : (
                         "-"
@@ -1944,6 +2235,7 @@ function RecentSubscribersTable({
         <thead>
           <tr>
             <th style={styles.th}>가입일</th>
+            <th style={styles.th}>구독</th>
             <th style={styles.th}>이메일</th>
             <th style={styles.th}>직업/상황</th>
             <th style={styles.th}>감정</th>
@@ -1952,6 +2244,7 @@ function RecentSubscribersTable({
             <th style={styles.th}>시간</th>
             <th style={styles.th}>난이도</th>
             <th style={styles.th}>페르소나</th>
+            <th style={styles.th}>구독 취소일</th>
             <th style={styles.th}>갱신</th>
           </tr>
         </thead>
@@ -1959,6 +2252,12 @@ function RecentSubscribersTable({
           {subscribers.map((subscriber) => (
             <tr key={subscriber.id}>
               <td style={styles.td}>{formatDate(subscriber.created_at)}</td>
+              <td style={styles.td}>
+                <StatusBadge
+                  label={getSubscriptionLabel(subscriber)}
+                  tone={getSubscriptionTone(subscriber)}
+                />
+              </td>
               <td style={styles.td}>{subscriber.email}</td>
               <td style={styles.td}>{subscriber.job_role || "-"}</td>
               <td style={styles.td}>{labelOf(subscriber.ai_emotion)}</td>
@@ -1967,6 +2266,7 @@ function RecentSubscribersTable({
               <td style={styles.td}>{labelOf(subscriber.action_time)}</td>
               <td style={styles.td}>{labelOf(subscriber.difficulty)}</td>
               <td style={styles.td}>{subscriber.persona_type || "-"}</td>
+              <td style={styles.td}>{formatDate(subscriber.unsubscribed_at)}</td>
               <td style={styles.td}>{formatDate(subscriber.updated_at)}</td>
             </tr>
           ))}
@@ -2531,6 +2831,76 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 900,
   },
+  subscriptionPanel: {
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 16px 40px rgba(0,0,0,0.18)",
+    border: "1px solid #fecaca",
+  },
+  subscriptionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+    marginBottom: 18,
+  },
+  subscriptionBadge: {
+    display: "inline-flex",
+    margin: "0 0 10px",
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "#fef2f2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  subscriptionPercentBox: {
+    minWidth: 120,
+    padding: 14,
+    borderRadius: 18,
+    background: "#ecfdf5",
+    border: "1px solid #a7f3d0",
+    textAlign: "right",
+  },
+  subscriptionPercent: {
+    display: "block",
+    color: "#047857",
+    fontSize: 30,
+    lineHeight: 1,
+    fontWeight: 900,
+    letterSpacing: "-0.04em",
+  },
+  subscriptionPercentLabel: {
+    display: "block",
+    marginTop: 6,
+    color: "#047857",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  subscriptionGuideBox: {
+    marginBottom: 18,
+    padding: 16,
+    borderRadius: 18,
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+  },
+  subscriptionGuideTitle: {
+    display: "block",
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 900,
+    marginBottom: 6,
+  },
+  subscriptionGuideText: {
+    margin: 0,
+    color: "#4b5563",
+    fontSize: 13,
+    lineHeight: 1.7,
+    fontWeight: 700,
+  },
   reviewPanel: {
     background: "#ffffff",
     color: "#111827",
@@ -2732,6 +3102,21 @@ const styles: Record<string, CSSProperties> = {
     background: "#eff6ff",
     color: "#1d4ed8",
     border: "1px solid #bfdbfe",
+    textDecoration: "none",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  smallDangerLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    height: 30,
+    marginTop: 6,
+    padding: "0 9px",
+    borderRadius: 9,
+    background: "#fef2f2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
     textDecoration: "none",
     fontSize: 12,
     fontWeight: 900,

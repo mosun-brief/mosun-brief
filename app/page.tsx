@@ -319,8 +319,7 @@ function buildBundles(groups: CategoryGroup[], options: CategoryOption[]) {
       group,
       options: options
         .filter(
-          (option) =>
-            option.is_active && option.group_key === group.group_key
+          (option) => option.is_active && option.group_key === group.group_key
         )
         .sort((a, b) => a.sort_order - b.sort_order),
     }));
@@ -556,7 +555,9 @@ export default function HomePage() {
               ...(isMobile ? styles.mobileHeroText : {}),
             }}
           >
-            <p style={{ ...styles.badge, ...(isMobile ? styles.mobileBadge : {}) }}>
+            <p
+              style={{ ...styles.badge, ...(isMobile ? styles.mobileBadge : {}) }}
+            >
               Personal AI Briefing
             </p>
 
@@ -803,10 +804,26 @@ export default function HomePage() {
                 </p>
 
                 <div style={styles.privacyNotice}>
-                  입력하신 이메일과 선택 정보는 맞춤 AI 브리핑 발송 및 품질 개선
-                  목적으로만 사용됩니다. 수집한 정보는 제3자에게 판매하거나
-                  제공하지 않으며, 이메일 하단의 구독 취소 링크를 통해 언제든
-                  구독을 중단할 수 있습니다.
+                  <p style={styles.privacyNoticeText}>
+                    입력하신 이메일과 선택 정보는 맞춤 AI 브리핑 발송 및 품질
+                    개선 목적으로만 사용됩니다. 수집한 정보는 제3자에게 판매하거나
+                    제공하지 않습니다.
+                  </p>
+
+                  <p style={styles.privacyNoticeText}>
+                    이메일 하단의 구독 취소 링크 또는 구독 취소 페이지를 통해
+                    언제든 수신을 중단할 수 있습니다.
+                  </p>
+
+                  <div style={styles.privacyLinkRow}>
+                    <a href="/privacy" style={styles.privacyLink}>
+                      개인정보처리방침
+                    </a>
+                    <span style={styles.privacyDivider}>·</span>
+                    <a href="/unsubscribe" style={styles.privacyLink}>
+                      구독 취소
+                    </a>
+                  </div>
                 </div>
               </form>
             </>
@@ -932,8 +949,8 @@ function SuccessOnboarding({
           </NextStepItem>
 
           <NextStepItem number="2" title="자료를 전부 읽으려고 하지 마세요">
-            목표는 정보 과식이 아니라 선택입니다. “왜 이 자료가 왔는지”와
-            “이번 주 실행”만 먼저 보면 됩니다.
+            목표는 정보 과식이 아니라 선택입니다. “왜 이 자료가 왔는지”와 “이번
+            주 실행”만 먼저 보면 됩니다.
           </NextStepItem>
 
           <NextStepItem number="3" title="피드백 버튼을 눌러주세요">
@@ -2384,6 +2401,33 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.72,
     textAlign: "center",
     wordBreak: "keep-all",
+  },
+  privacyNoticeText: {
+    margin: "0 0 8px",
+    color: "rgba(7, 16, 12, 0.62)",
+    fontSize: 12,
+    lineHeight: 1.72,
+    textAlign: "center",
+    wordBreak: "keep-all",
+  },
+  privacyLinkRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    flexWrap: "wrap",
+  },
+  privacyLink: {
+    color: "#0b1711",
+    fontSize: 12,
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: 3,
+  },
+  privacyDivider: {
+    color: "rgba(7, 16, 12, 0.32)",
+    fontSize: 12,
   },
   successWrap: {
     display: "flex",
