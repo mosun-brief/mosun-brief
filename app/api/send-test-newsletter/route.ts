@@ -663,6 +663,8 @@ export async function POST(request: NextRequest) {
       .select(
         "id, email, ai_emotion, ai_intent, blocker, action_time, persona_type"
       )
+      // 실험 일지(/lab) 구독자는 브리핑 미리보기 기준에서 제외합니다.
+      .neq("signup_source", "lab")
       .order("created_at", { ascending: false })
       .limit(1);
 
