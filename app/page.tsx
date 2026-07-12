@@ -400,9 +400,9 @@ function SiteHeader() {
         </a>
         <nav className="brf-topnav" aria-label="주요 메뉴">
           <a href="https://mosunbrief.kr" rel="noopener">
-            모순책장 공방
+            모순책장
           </a>
-          <a href="/lab">공방 일지</a>
+          <a href="/lab">기록들</a>
           <a href="#subscribe-result" className="brf-topnav-cta">
             브리핑 시작하기
           </a>

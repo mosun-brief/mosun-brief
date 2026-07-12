@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: "구독이 완료되었습니다. 새 공방 일지가 나오면 이메일로 보내드릴게요.",
+      message: "구독이 완료되었습니다. 새 기록이 나오면 이메일로 보내드릴게요.",
     });
   } catch (error) {
     const message =

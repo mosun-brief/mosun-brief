@@ -1680,7 +1680,7 @@ export async function POST(request: Request) {
       )
       .not("email", "is", null)
       .eq("is_active", true)
-      // 공방 일지(/lab) 구독자에게는 AI 브리핑을 보내지 않습니다.
+      // 기록(/lab) 구독자에게는 AI 브리핑을 보내지 않습니다.
       .neq("signup_source", "lab")
       .order("created_at", { ascending: false });
 

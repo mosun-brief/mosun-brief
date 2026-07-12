@@ -104,7 +104,7 @@ export default function LabPage() {
           </a>
           <nav className="brf-topnav" aria-label="주요 메뉴">
             <a href="https://mosunbrief.kr" rel="noopener">
-              모순책장 공방
+              모순책장
             </a>
             <a href="/" className="brf-topnav-cta">
               브리핑 보러가기
@@ -115,7 +115,7 @@ export default function LabPage() {
 
       <main>
         <section className="brf-shell brf-lab-hero">
-          <p className="brf-eyebrow brf-rise">모순책장 · 응급실 밖 공방</p>
+          <p className="brf-eyebrow brf-rise">모순책장 · 응급실 밖 기록</p>
           <PulseMark />
           <h1 className="brf-h1 brf-rise" style={{ animationDelay: "0.1s" }}>
             응급실에서는 환자를 봅니다.
@@ -123,8 +123,8 @@ export default function LabPage() {
             응급실 밖에서는 AI와 회사를 짓습니다.
           </h1>
           <p className="brf-lead-sub brf-rise" style={{ animationDelay: "0.22s" }}>
-            응급의학과 의사가 AI와 협업하며 1인 기업을 만들어가는 공방
-            일지입니다. 새 기록이 나오면 이메일로 보내드립니다.
+            응급의학과 의사가 AI와 협업하며 1인 기업을 만들어가는 기록입니다.
+            새 글이 나오면 이메일로 보내드립니다.
           </p>
 
           <div
@@ -173,7 +173,7 @@ export default function LabPage() {
                 ? "처리 중..."
                 : isCompleted
                 ? "구독 완료"
-                : "공방 일지 구독하기"}
+                : "기록 구독하기"}
             </button>
           </form>
 
@@ -204,7 +204,7 @@ export default function LabPage() {
 
       <footer className="brf-footer">
         <div className="brf-shell brf-footer-inner">
-          <span>© {new Date().getFullYear()} 모순책장 · 응급실 밖 공방</span>
+          <span>© {new Date().getFullYear()} 모순책장 · 응급실 밖 기록</span>
           <div className="brf-footer-links">
             <a href="https://mosunbrief.kr" rel="noopener">
               모순책장
