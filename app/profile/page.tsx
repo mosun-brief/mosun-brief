@@ -190,7 +190,7 @@ const CATEGORY_OPTIONS: CategoryOption[] = [
     group_key: "action_time",
     option_value: "half_day_weekend",
     label: "주말 반나절",
-    description: "주말에 미니 프로젝트나 긴 실험이 가능해요.",
+    description: "주말에 미니 프로젝트나 깊은 작업이 가능해요.",
   },
 ];
 

@@ -13,16 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mosun-brief.vercel.app"),
-  title: "Personal AI Briefing – 아직 AI로 무언가를 만들지 못한 당신에게",
+  metadataBase: new URL("https://brief.mosunbrief.kr"),
+  title: "Mosun Brief – 아직 AI로 무언가를 만들지 못한 당신에게",
   description:
     "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
   openGraph: {
-    title: "Personal AI Briefing – 아직 AI로 무언가를 만들지 못한 당신에게",
+    title: "Mosun Brief – 아직 AI로 무언가를 만들지 못한 당신에게",
     description:
       "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
-    url: "https://mosun-brief.vercel.app",
-    siteName: "Personal AI Briefing",
+    url: "https://brief.mosunbrief.kr",
+    siteName: "Mosun Brief — Personal AI Briefing",
     images: [
       {
         url: "/og-image.png",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Personal AI Briefing – 아직 AI로 무언가를 만들지 못한 당신에게",
+    title: "Mosun Brief – 아직 AI로 무언가를 만들지 못한 당신에게",
     description:
       "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
     images: ["/og-image.png"],

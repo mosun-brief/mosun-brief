@@ -276,7 +276,7 @@ const FALLBACK_OPTIONS: CategoryOption[] = [
     group_key: "action_time",
     option_value: "half_day_weekend",
     label: "주말 반나절",
-    description: "주말에 미니 프로젝트나 긴 실험이 가능해요.",
+    description: "주말에 미니 프로젝트나 깊은 작업이 가능해요.",
     sort_order: 4,
     is_active: true,
   },
@@ -359,6 +359,76 @@ function findSelectedLabel(
   );
 }
 
+/* 심전도 마크 — 접속 시 한 번 그려지는 브랜드 모션 */
+function PulseMark({ width = 220 }: { width?: number }) {
+  return (
+    <svg
+      className="brf-pulse"
+      width={width}
+      height={48}
+      viewBox="0 0 240 48"
+      role="img"
+      aria-label="심전도 파형이 그려지는 Mosun Brief 마크"
+    >
+      <polyline points="2,30 70,30 84,30 94,8 106,44 116,30 152,30 238,30" />
+    </svg>
+  );
+}
+
+function PulseGlyph() {
+  return (
+    <svg width={34} height={20} viewBox="0 0 68 40" aria-hidden="true">
+      <polyline
+        points="2,24 20,24 26,24 32,6 40,36 46,24 54,24 66,24"
+        fill="none"
+        stroke="var(--brf-clay)"
+        strokeWidth={4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SiteHeader() {
+  return (
+    <header className="brf-topbar">
+      <div className="brf-shell brf-topbar-inner">
+        <a href="/" className="brf-wordmark">
+          <PulseGlyph />
+          Mosun Brief
+        </a>
+        <nav className="brf-topnav" aria-label="주요 메뉴">
+          <a href="https://mosunbrief.kr" rel="noopener">
+            모순책장 공방
+          </a>
+          <a href="/lab">공방 일지</a>
+          <a href="#subscribe-result" className="brf-topnav-cta">
+            브리핑 시작하기
+          </a>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="brf-footer">
+      <div className="brf-shell brf-footer-inner">
+        <span>© {new Date().getFullYear()} Mosun Brief · 모순책장의 첫 작품</span>
+        <div className="brf-footer-links">
+          <a href="https://mosunbrief.kr" rel="noopener">
+            모순책장
+          </a>
+          <a href="/privacy">개인정보처리방침</a>
+          <a href="/unsubscribe">구독 취소</a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
@@ -371,7 +441,6 @@ export default function HomePage() {
   const [selections, setSelections] =
     useState<Record<CategoryGroupKey, string>>(DEFAULT_SELECTIONS);
 
-  const [isMobile, setIsMobile] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -392,19 +461,6 @@ export default function HomePage() {
     }),
     [options, selections]
   );
-
-  useEffect(() => {
-    function updateIsMobile() {
-      setIsMobile(window.innerWidth <= 760);
-    }
-
-    updateIsMobile();
-    window.addEventListener("resize", updateIsMobile);
-
-    return () => {
-      window.removeEventListener("resize", updateIsMobile);
-    };
-  }, []);
 
   useEffect(() => {
     async function loadCategories() {
@@ -536,70 +592,48 @@ export default function HomePage() {
   }
 
   return (
-    <main
-      className={notoSansKr.className}
-      style={{ ...styles.page, ...(isMobile ? styles.mobilePage : {}) }}
+    <div
+      className={`${notoSansKr.className} brf`}
+      style={{ "--brf-serif": notoSerifKr.style.fontFamily } as CSSProperties}
     >
-      <div style={styles.monetLayer} />
-      <div style={styles.darkLayer} />
+      <SiteHeader />
 
-      <section
-        style={{ ...styles.shell, ...(isMobile ? styles.mobileShell : {}) }}
-      >
-        <section
-          style={{ ...styles.hero, ...(isMobile ? styles.mobileHero : {}) }}
-        >
-          <div
-            style={{
-              ...styles.heroText,
-              ...(isMobile ? styles.mobileHeroText : {}),
-            }}
-          >
-            <p
-              style={{ ...styles.badge, ...(isMobile ? styles.mobileBadge : {}) }}
-            >
-              Personal AI Briefing
-            </p>
-
-            <h1
-              style={{
-                ...styles.title,
-                ...(isMobile ? styles.mobileTitle : {}),
-              }}
-            >
+      <main>
+        {/* ── 히어로 ── */}
+        <section className="brf-hero">
+          <div className="brf-shell">
+            <p className="brf-eyebrow brf-rise">Personal AI Briefing</p>
+            <PulseMark />
+            <h1 className="brf-h1 brf-rise" style={{ animationDelay: "0.1s" }}>
               알고는 있지만,
               <br />
-              아직 만들지는
-              <br />
-              못했다.
+              아직 만들지는 못했다.
             </h1>
-
-            <p
-              style={{
-                ...styles.description,
-                ...(isMobile ? styles.mobileDescription : {}),
-              }}
-            >
+            <p className="brf-lead brf-rise" style={{ animationDelay: "0.22s" }}>
               AI 시대가 온다는 말은 충분히 들었습니다. 이제 필요한 것은 더 많은
               정보가 아니라, 당신이 직접 해보는 첫 번째 행동입니다.
             </p>
-
             <p
-              style={{
-                ...styles.descriptionSmall,
-                ...(isMobile ? styles.mobileDescriptionSmall : {}),
-              }}
+              className="brf-lead-sub brf-rise"
+              style={{ animationDelay: "0.3s" }}
             >
               당신의 감정, 목적, 막히는 지점, 가능한 시간을 바탕으로 이번 주
               실행할 수 있는 개인 맞춤 AI 브리핑을 보냅니다.
             </p>
 
             <div
-              style={{
-                ...styles.promiseGrid,
-                ...(isMobile ? styles.mobilePromiseGrid : {}),
-              }}
+              className="brf-cta-row brf-rise"
+              style={{ animationDelay: "0.38s" }}
             >
+              <a href="#subscribe-result" className="brf-btn">
+                내 브리핑 시작하기
+              </a>
+              <a href="#preview" className="brf-btn-ghost">
+                받게 될 브리핑 미리보기
+              </a>
+            </div>
+
+            <div className="brf-grid4 brf-rise" style={{ animationDelay: "0.46s" }}>
               <PromiseItem number="01" title="상태">
                 AI에 대한 지금의 감정
               </PromiseItem>
@@ -614,225 +648,158 @@ export default function HomePage() {
               </PromiseItem>
             </div>
           </div>
+        </section>
 
-          <aside
-            style={{
-              ...styles.previewPanel,
-              ...(isMobile ? styles.mobilePreviewPanel : {}),
-            }}
-          >
-            <p style={styles.previewEyebrow}>받게 되는 것</p>
-            <h2 style={styles.previewTitle}>개인 맞춤 AI 브리핑</h2>
-
-            <div style={styles.previewList}>
-              <PreviewRow>지금 볼 만한 AI 자료</PreviewRow>
-              <PreviewRow>이 자료가 필요한 이유</PreviewRow>
-              <PreviewRow>10분·30분·2시간 실행 제안</PreviewRow>
-              <PreviewRow>좋음 / 더 깊게 / 별로 피드백 반영</PreviewRow>
-              <PreviewRow>반응이 쌓일수록 더 정확해지는 추천</PreviewRow>
-            </div>
-
-            <p style={styles.previewNote}>
-              목표는 AI를 많이 아는 것이 아닙니다. AI와 함께 무언가를
-              만들어내는 것입니다.
+        {/* ── 선언 ── */}
+        <section className="brf-band">
+          <div className="brf-shell">
+            <p className="brf-quote">
+              정보는 이미 많습니다. 문제는 시작점입니다. Personal AI Briefing은
+              막연한 관심을 <em>이번 주의 작은 실행</em>으로 바꿉니다.
             </p>
-          </aside>
+          </div>
         </section>
 
-        <section
-          style={{
-            ...styles.statementBox,
-            ...(isMobile ? styles.mobileStatementBox : {}),
-          }}
-        >
-          <p style={styles.statementText}>
-            정보는 이미 많습니다. 문제는 시작점입니다.
-            <br />
-            Personal AI Briefing은 막연한 관심을 이번 주의 작은 실행으로
-            바꿉니다.
-          </p>
-        </section>
+        {/* ── 브리핑 미리보기 ── */}
+        <BriefingPreviewSection />
 
-        <BriefingPreviewSection isMobile={isMobile} />
-
-        <section
-          style={{ ...styles.card, ...(isMobile ? styles.mobileCard : {}) }}
-          id="subscribe-result"
-        >
-          {isSuccess ? (
-            <SuccessOnboarding
-              email={submittedEmail}
-              summary={selectedSummary}
-              difficulty={difficulty}
-              onReset={handleResetForm}
-              isMobile={isMobile}
-            />
-          ) : (
-            <>
-              <div
-                style={{
-                  ...styles.cardHeader,
-                  ...(isMobile ? styles.mobileCardHeader : {}),
-                }}
-              >
-                <div>
-                  <p style={styles.cardKicker}>무료 브리핑 설정</p>
-                  <h2
-                    style={{
-                      ...styles.cardTitle,
-                      ...(isMobile ? styles.mobileCardTitle : {}),
-                    }}
-                  >
-                    내 AI 브리핑 시작하기
-                  </h2>
-                </div>
-                <p style={styles.cardSubtext}>
-                  1분이면 충분합니다. 선택값은 이후 발송되는 자료 추천과 실행
-                  제안에 사용됩니다.
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div
-                  style={{
-                    ...styles.formBlock,
-                    ...(isMobile ? styles.mobileFormBlock : {}),
-                  }}
-                >
-                  <label style={styles.label}>
-                    이메일
-                    <input
-                      style={styles.input}
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="briefing@example.com"
-                      required
-                    />
-                  </label>
-
-                  <label style={styles.label}>
-                    직업/상황
-                    <input
-                      style={styles.input}
-                      type="text"
-                      value={jobRole}
-                      onChange={(event) => setJobRole(event.target.value)}
-                      placeholder="예: 인턴, 직장인, 창업 준비, 학생"
-                    />
-                  </label>
-
-                  <label style={styles.label}>
-                    선호 난이도
-                    <select
-                      style={styles.input}
-                      value={difficulty}
-                      onChange={(event) => setDifficulty(event.target.value)}
-                    >
-                      <option value="easy">입문</option>
-                      <option value="normal">중간</option>
-                      <option value="expert">심화</option>
-                    </select>
-                  </label>
-                </div>
-
-                {loadingCategories && (
-                  <p style={styles.loadingText}>
-                    진단 항목을 불러오는 중입니다. 불러오기에 실패하면 기본
-                    항목으로 진행됩니다.
-                  </p>
-                )}
-
-                <div style={styles.questionStack}>
-                  {bundles.map((bundle) => (
-                    <QuestionBlock
-                      key={bundle.group.group_key}
-                      bundle={bundle}
-                      selectedValue={selections[bundle.group.group_key]}
-                      onSelect={handleSelect}
-                      isMobile={isMobile}
-                    />
-                  ))}
-                </div>
-
-                <section
-                  style={{
-                    ...styles.summaryBox,
-                    ...(isMobile ? styles.mobileSummaryBox : {}),
-                  }}
-                >
-                  <div>
-                    <p style={styles.summaryKicker}>현재 선택 요약</p>
-                    <p style={styles.summaryText}>
-                      <strong>{selectedSummary.aiEmotion}</strong> 상태에서{" "}
-                      <strong>{selectedSummary.aiIntent}</strong>에 관심이 있고,{" "}
-                      <strong>{selectedSummary.blocker}</strong> 때문에 막혀
-                      있으며, 이번 주에는{" "}
-                      <strong>{selectedSummary.actionTime}</strong> 정도 실행할 수
-                      있습니다.
+        {/* ── 신청 폼 ── */}
+        <section className="brf-band" id="subscribe-result">
+          <div className="brf-shell">
+            <div className="brf-card">
+              {isSuccess ? (
+                <SuccessOnboarding
+                  email={submittedEmail}
+                  summary={selectedSummary}
+                  difficulty={difficulty}
+                  onReset={handleResetForm}
+                />
+              ) : (
+                <>
+                  <div className="brf-form-head">
+                    <div>
+                      <p className="brf-kicker">무료 브리핑 설정</p>
+                      <h2 className="brf-h2">내 AI 브리핑 시작하기</h2>
+                    </div>
+                    <p>
+                      1분이면 충분합니다. 선택값은 이후 발송되는 자료 추천과
+                      실행 제안에 사용됩니다.
                     </p>
                   </div>
-                </section>
 
-                <button
-                  type="submit"
-                  style={{
-                    ...styles.submitButton,
-                    ...(isMobile ? styles.mobileSubmitButton : {}),
-                    opacity: submitting ? 0.65 : 1,
-                  }}
-                  disabled={submitting}
-                >
-                  {submitting ? "저장 중..." : "내 AI 브리핑 시작하기"}
-                </button>
+                  <form onSubmit={handleSubmit}>
+                    <div className="brf-field-row">
+                      <label className="brf-label">
+                        이메일
+                        <input
+                          className="brf-input"
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="briefing@example.com"
+                          required
+                        />
+                      </label>
 
-                {message && (
-                  <div
-                    style={{
-                      ...styles.messageBox,
-                      background: "#fff1f2",
-                      borderColor: "#fecdd3",
-                      color: "#be123c",
-                    }}
-                  >
-                    {message}
-                  </div>
-                )}
+                      <label className="brf-label">
+                        직업/상황
+                        <input
+                          className="brf-input"
+                          type="text"
+                          value={jobRole}
+                          onChange={(event) => setJobRole(event.target.value)}
+                          placeholder="예: 인턴, 직장인, 창업 준비, 학생"
+                        />
+                      </label>
 
-                <p style={styles.footerNote}>
-                  같은 이메일로 다시 신청하면 기존 정보가 업데이트됩니다.
-                </p>
+                      <label className="brf-label">
+                        선호 난이도
+                        <select
+                          className="brf-input"
+                          value={difficulty}
+                          onChange={(event) => setDifficulty(event.target.value)}
+                        >
+                          <option value="easy">입문</option>
+                          <option value="normal">중간</option>
+                          <option value="expert">심화</option>
+                        </select>
+                      </label>
+                    </div>
 
-                <div style={styles.privacyNotice}>
-                  <p style={styles.privacyNoticeText}>
-                    입력하신 이메일과 선택 정보는 맞춤 AI 브리핑 발송 및 품질
-                    개선 목적으로만 사용됩니다. 수집한 정보는 제3자에게 판매하거나
-                    제공하지 않습니다.
-                  </p>
+                    {loadingCategories && (
+                      <p className="brf-loading">
+                        진단 항목을 불러오는 중입니다. 불러오기에 실패하면 기본
+                        항목으로 진행됩니다.
+                      </p>
+                    )}
 
-                  <p style={styles.privacyNoticeText}>
-                    이메일 하단의 구독 취소 링크 또는 구독 취소 페이지를 통해
-                    언제든 수신을 중단할 수 있습니다.
-                  </p>
+                    <div>
+                      {bundles.map((bundle) => (
+                        <QuestionBlock
+                          key={bundle.group.group_key}
+                          bundle={bundle}
+                          selectedValue={selections[bundle.group.group_key]}
+                          onSelect={handleSelect}
+                        />
+                      ))}
+                    </div>
 
-                  <div style={styles.privacyLinkRow}>
-                    <a href="/privacy" style={styles.privacyLink}>
-                      개인정보처리방침
-                    </a>
-                    <span style={styles.privacyDivider}>·</span>
-                    <a href="/unsubscribe" style={styles.privacyLink}>
-                      구독 취소
-                    </a>
-                  </div>
-                </div>
-              </form>
-            </>
-          )}
+                    <section className="brf-summary">
+                      <p className="brf-summary-kicker">현재 선택 요약</p>
+                      <p className="brf-summary-text">
+                        <strong>{selectedSummary.aiEmotion}</strong> 상태에서{" "}
+                        <strong>{selectedSummary.aiIntent}</strong>에 관심이
+                        있고, <strong>{selectedSummary.blocker}</strong> 때문에
+                        막혀 있으며, 이번 주에는{" "}
+                        <strong>{selectedSummary.actionTime}</strong> 정도 실행할
+                        수 있습니다.
+                      </p>
+                    </section>
+
+                    <button
+                      type="submit"
+                      className="brf-btn"
+                      style={{ width: "100%" }}
+                      disabled={submitting}
+                    >
+                      {submitting ? "저장 중..." : "내 AI 브리핑 시작하기"}
+                    </button>
+
+                    {message && <div className="brf-msg error">{message}</div>}
+
+                    <p className="brf-form-note">
+                      같은 이메일로 다시 신청하면 기존 정보가 업데이트됩니다.
+                    </p>
+
+                    <div className="brf-privacy">
+                      <p>
+                        입력하신 이메일과 선택 정보는 맞춤 AI 브리핑 발송 및
+                        품질 개선 목적으로만 사용됩니다. 수집한 정보는 제3자에게
+                        판매하거나 제공하지 않습니다.
+                      </p>
+                      <p>
+                        이메일 하단의 구독 취소 링크 또는 구독 취소 페이지를
+                        통해 언제든 수신을 중단할 수 있습니다.
+                      </p>
+                      <div className="brf-privacy-links">
+                        <a href="/privacy">개인정보처리방침</a>
+                        {" · "}
+                        <a href="/unsubscribe">구독 취소</a>
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
         </section>
 
-        <BuildSection isMobile={isMobile} />
-      </section>
-    </main>
+        {/* ── Personal AI Build ── */}
+        <BuildSection />
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }
 
@@ -846,19 +813,10 @@ function PromiseItem({
   children: ReactNode;
 }) {
   return (
-    <div style={styles.promiseItem}>
-      <span style={styles.promiseNumber}>{number}</span>
-      <strong style={styles.promiseTitle}>{title}</strong>
-      <span style={styles.promiseText}>{children}</span>
-    </div>
-  );
-}
-
-function PreviewRow({ children }: { children: ReactNode }) {
-  return (
-    <div style={styles.previewRow}>
-      <span style={styles.previewDot} />
-      <span>{children}</span>
+    <div className="brf-grid4-item">
+      <span className="brf-grid4-no">{number}</span>
+      <strong className="brf-grid4-title">{title}</strong>
+      <span className="brf-grid4-text">{children}</span>
     </div>
   );
 }
@@ -868,57 +826,31 @@ function SuccessOnboarding({
   summary,
   difficulty,
   onReset,
-  isMobile,
 }: {
   email: string;
   summary: SelectedSummary;
   difficulty: string;
   onReset: () => void;
-  isMobile: boolean;
 }) {
   const difficultyLabel =
     difficulty === "expert" ? "심화" : difficulty === "normal" ? "중간" : "입문";
 
   return (
-    <section style={styles.successWrap}>
-      <div
-        style={{
-          ...styles.successHero,
-          ...(isMobile ? styles.mobileSuccessHero : {}),
-        }}
-      >
-        <p style={styles.successBadge}>신청 완료</p>
-        <h2
-          style={{
-            ...styles.successTitle,
-            ...(isMobile ? styles.mobileSuccessTitle : {}),
-          }}
-        >
-          이제 브리핑이 당신에게 맞춰집니다.
-        </h2>
-        <p
-          style={{
-            ...styles.successDescription,
-            ...(isMobile ? styles.mobileSuccessDescription : {}),
-          }}
-        >
-          입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 이유 설명, 실행 제안이
-          맞춤화됩니다. 첫 브리핑을 받은 뒤 피드백을 누를수록 추천 정확도가 더
-          좋아집니다.
-        </p>
+    <section>
+      <span className="brf-success-badge">신청 완료</span>
+      <h2 className="brf-h2">이제 브리핑이 당신에게 맞춰집니다.</h2>
+      <p className="brf-section-desc">
+        입력한 상태를 기준으로 앞으로 발송되는 AI 자료, 이유 설명, 실행 제안이
+        맞춤화됩니다. 첫 브리핑을 받은 뒤 피드백을 누를수록 추천 정확도가 더
+        좋아집니다.
+      </p>
 
-        <div style={styles.successEmailBox}>
-          <span style={styles.successEmailLabel}>발송 이메일</span>
-          <strong style={styles.successEmail}>{email}</strong>
-        </div>
+      <div className="brf-email-box">
+        <span>발송 이메일</span>
+        <strong>{email}</strong>
       </div>
 
-      <div
-        style={{
-          ...styles.resultGrid,
-          ...(isMobile ? styles.mobileResultGrid : {}),
-        }}
-      >
+      <div className="brf-result-grid">
         <ResultCard label="AI에 대한 현재 감정" value={summary.aiEmotion} />
         <ResultCard label="AI로 하고 싶은 것" value={summary.aiIntent} />
         <ResultCard label="지금 막히는 지점" value={summary.blocker} />
@@ -926,23 +858,9 @@ function SuccessOnboarding({
         <ResultCard label="선호 난이도" value={difficultyLabel} />
       </div>
 
-      <section
-        style={{
-          ...styles.nextStepBox,
-          ...(isMobile ? styles.mobileNextStepBox : {}),
-        }}
-      >
-        <p style={styles.nextStepKicker}>다음에 하면 좋은 것</p>
-        <h3
-          style={{
-            ...styles.nextStepTitle,
-            ...(isMobile ? styles.mobileNextStepTitle : {}),
-          }}
-        >
-          첫 브리핑을 받기 전 준비
-        </h3>
-
-        <div style={styles.nextStepList}>
+      <section className="brf-inner-box-plain">
+        <p className="brf-inner-title-plain">첫 브리핑을 받기 전 준비</p>
+        <div className="brf-next-list">
           <NextStepItem number="1" title="메일함에서 브리핑을 확인하세요">
             첫 메일이 스팸함이나 프로모션함으로 들어갈 수 있습니다. 메일이
             도착하면 한 번 열어주세요.
@@ -960,23 +878,20 @@ function SuccessOnboarding({
         </div>
       </section>
 
-      <section style={styles.briefingExampleBox}>
-        <p style={styles.briefingExampleKicker}>
-          앞으로 이런 식으로 받게 됩니다
-        </p>
-        <div style={styles.briefingExample}>
-          <strong style={styles.briefingExampleTitle}>
+      <section className="brf-inner-box">
+        <p className="brf-inner-title">앞으로 이런 식으로 받게 됩니다</p>
+        <p className="brf-inner-text">
+          <strong>
             “정보가 너무 많아 피곤한 사람을 위한 이번 주 AI 브리핑”
           </strong>
-          <p style={styles.briefingExampleText}>
-            오늘의 자료 1개 → 나에게 온 이유 → 핵심 요약 → 이번 주{" "}
-            {summary.actionTime} 안에 해볼 행동 1개
-          </p>
-        </div>
+          <br />
+          오늘의 자료 1개 → 나에게 온 이유 → 핵심 요약 → 이번 주{" "}
+          {summary.actionTime} 안에 해볼 행동 1개
+        </p>
       </section>
 
-      <div style={styles.successActions}>
-        <button type="button" style={styles.secondaryButton} onClick={onReset}>
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+        <button type="button" className="brf-btn-ghost" onClick={onReset}>
           다른 이메일로 다시 신청하기
         </button>
       </div>
@@ -986,9 +901,9 @@ function SuccessOnboarding({
 
 function ResultCard({ label, value }: { label: string; value: string }) {
   return (
-    <div style={styles.resultCard}>
-      <span style={styles.resultLabel}>{label}</span>
-      <strong style={styles.resultValue}>{value}</strong>
+    <div className="brf-result-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -1003,11 +918,11 @@ function NextStepItem({
   children: ReactNode;
 }) {
   return (
-    <div style={styles.nextStepItem}>
-      <div style={styles.nextStepNumber}>{number}</div>
+    <div className="brf-next-item">
+      <div className="brf-next-no">{number}</div>
       <div>
-        <strong style={styles.nextStepItemTitle}>{title}</strong>
-        <p style={styles.nextStepItemText}>{children}</p>
+        <strong>{title}</strong>
+        <p>{children}</p>
       </div>
     </div>
   );
@@ -1017,59 +932,27 @@ function QuestionBlock({
   bundle,
   selectedValue,
   onSelect,
-  isMobile,
 }: {
   bundle: CategoryBundle;
   selectedValue: string;
   onSelect: (groupKey: CategoryGroupKey, optionValue: string) => void;
-  isMobile: boolean;
 }) {
   const groupKey = bundle.group.group_key;
 
   return (
-    <section
-      style={{
-        ...styles.questionBlock,
-        ...(isMobile ? styles.mobileQuestionBlock : {}),
-      }}
-    >
-      <div
-        style={{
-          ...styles.questionHeader,
-          ...(isMobile ? styles.mobileQuestionHeader : {}),
-        }}
-      >
-        <div
-          style={{
-            ...styles.stepBadge,
-            ...(isMobile ? styles.mobileStepBadge : {}),
-          }}
-        >
-          {GROUP_STEP_LABELS[groupKey]}
-        </div>
-
+    <section className="brf-q">
+      <div className="brf-q-head">
+        <div className="brf-q-step">{GROUP_STEP_LABELS[groupKey]}</div>
         <div>
-          <h3
-            style={{
-              ...styles.questionTitle,
-              ...(isMobile ? styles.mobileQuestionTitle : {}),
-            }}
-          >
-            {bundle.group.label}
-          </h3>
+          <h3 className="brf-q-title">{bundle.group.label}</h3>
           {bundle.group.description && (
-            <p style={styles.questionDescription}>{bundle.group.description}</p>
+            <p className="brf-q-desc">{bundle.group.description}</p>
           )}
-          <p style={styles.questionHelp}>{GROUP_HELP_TEXTS[groupKey]}</p>
+          <p className="brf-q-help">{GROUP_HELP_TEXTS[groupKey]}</p>
         </div>
       </div>
 
-      <div
-        style={{
-          ...styles.optionGrid,
-          ...(isMobile ? styles.mobileOptionGrid : {}),
-        }}
-      >
+      <div className="brf-opt-grid">
         {bundle.options.map((option) => {
           const selected = selectedValue === option.option_value;
 
@@ -1077,22 +960,16 @@ function QuestionBlock({
             <button
               key={`${option.group_key}-${option.option_value}`}
               type="button"
-              style={{
-                ...styles.optionButton,
-                ...(isMobile ? styles.mobileOptionButton : {}),
-                ...(selected ? styles.optionButtonSelected : {}),
-              }}
+              className={`brf-opt${selected ? " selected" : ""}`}
               onClick={() => onSelect(option.group_key, option.option_value)}
             >
-              <span style={styles.optionTopLine}>
-                <span style={styles.optionLabel}>{option.label}</span>
-                {selected && <span style={styles.selectedPill}>선택됨</span>}
+              <span className="brf-opt-top">
+                <span className="brf-opt-label">{option.label}</span>
+                {selected && <span className="brf-opt-pill">선택됨</span>}
               </span>
 
               {option.description && (
-                <span style={styles.optionDescription}>
-                  {option.description}
-                </span>
+                <span className="brf-opt-desc">{option.description}</span>
               )}
             </button>
           );
@@ -1102,166 +979,150 @@ function QuestionBlock({
   );
 }
 
-function BriefingPreviewSection({ isMobile }: { isMobile: boolean }) {
+function BriefingPreviewSection() {
   return (
-    <section
-      style={{
-        ...styles.realPreviewSection,
-        ...(isMobile ? styles.mobileRealPreviewSection : {}),
-      }}
-    >
-      <div
-        style={{
-          ...styles.realPreviewHeader,
-          ...(isMobile ? styles.mobileRealPreviewHeader : {}),
-        }}
-      >
-        <div>
-          <p style={styles.realPreviewKicker}>브리핑 미리보기</p>
-          <h2
-            style={{
-              ...styles.realPreviewTitle,
-              ...(isMobile ? styles.mobileRealPreviewTitle : {}),
-            }}
-          >
-            실제로 이런 브리핑을
-            <br />
-            받게 됩니다.
-          </h2>
-        </div>
-
-        <p style={styles.realPreviewDescription}>
+    <section className="brf-section" id="preview">
+      <div className="brf-shell">
+        <p className="brf-kicker">브리핑 미리보기</p>
+        <h2 className="brf-h2">
+          실제로 이런 브리핑을
+          <br />
+          받게 됩니다.
+        </h2>
+        <p className="brf-section-desc">
           단순히 AI 뉴스를 모아 보내는 것이 아니라, 당신의 상태·관심사·난이도·
           피드백에 따라 이번 주 하나의 자료와 실행 과제를 추천합니다.
         </p>
-      </div>
 
-      <div
-        style={{
-          ...styles.realPreviewGrid,
-          ...(isMobile ? styles.mobileRealPreviewGrid : {}),
-        }}
-      >
-        <article style={styles.briefingCard}>
-          <div style={styles.briefingCardTop}>
-            <span style={styles.briefingTagPrimary}>추천 1</span>
-            <span style={styles.briefingTag}>general_ai</span>
-            <span style={styles.briefingTag}>중간</span>
-            <span style={styles.briefingTag}>neutral</span>
-          </div>
+        <div className="brf-preview-grid">
+          <article className="brf-card">
+            <div className="brf-tags">
+              <span className="brf-tag brf-tag-primary">추천 1</span>
+              <span className="brf-tag">general_ai</span>
+              <span className="brf-tag">중간</span>
+              <span className="brf-tag">neutral</span>
+            </div>
 
-          <h3
-            style={{
-              ...styles.briefingCardTitle,
-              ...(isMobile ? styles.mobileBriefingCardTitle : {}),
-            }}
-          >
-            AI 에이전트가 웹을 대신 돌아다니는 시대를 보고 싶은 사람을 위한
-            Tabstack by Mozilla
-          </h3>
+            <h3 className="brf-card-title">
+              AI 에이전트가 웹을 대신 돌아다니는 시대를 보고 싶은 사람을 위한
+              Tabstack by Mozilla
+            </h3>
 
-          <section style={styles.reasonBox}>
-            <p style={styles.reasonTitle}>이 자료가 나에게 온 이유</p>
-            <ul style={styles.reasonList}>
-              <li style={styles.reasonItem}>
-                현재 감정이 ‘기대됨’인 구독자에게 맞는 자료
-              </li>
-              <li style={styles.reasonItem}>
-                관심 방향이 ‘사업 기회나 돈 벌 기회’인 구독자에게 맞는 자료
-              </li>
-              <li style={styles.reasonItem}>
-                ‘기술적인 내용이 어려움’을 줄이는 자료
-              </li>
-              <li style={styles.reasonItem}>이전에 실행해본 자료와 유사한 방향</li>
-            </ul>
-          </section>
+            <section className="brf-inner-box">
+              <p className="brf-inner-title">이 자료가 나에게 온 이유</p>
+              <ul className="brf-inner-list">
+                <li>현재 감정이 ‘기대됨’인 구독자에게 맞는 자료</li>
+                <li>관심 방향이 ‘사업 기회나 돈 벌 기회’인 구독자에게 맞는 자료</li>
+                <li>‘기술적인 내용이 어려움’을 줄이는 자료</li>
+                <li>이전에 실행해본 자료와 유사한 방향</li>
+              </ul>
+            </section>
 
-          <section style={styles.briefingTextBlock}>
-            <p style={styles.briefingSmallTitle}>먼저 이것만 이해하세요</p>
-            <p style={styles.briefingParagraph}>
-              앞으로 브라우저는 단순히 웹페이지를 보여주는 도구를 넘어,
-              사용자를 대신해 정보를 찾고 정리하는 방향으로 바뀌고 있습니다.
-              중요한 것은 모든 기술을 이해하는 것이 아니라, 내 일에서 어떤
-              흐름을 맡길 수 있는지 상상해보는 것입니다.
-            </p>
-          </section>
+            <section className="brf-inner-box-plain">
+              <p className="brf-inner-title-plain">먼저 이것만 이해하세요</p>
+              <p className="brf-inner-text">
+                앞으로 브라우저는 단순히 웹페이지를 보여주는 도구를 넘어,
+                사용자를 대신해 정보를 찾고 정리하는 방향으로 바뀌고 있습니다.
+                중요한 것은 모든 기술을 이해하는 것이 아니라, 내 일에서 어떤
+                흐름을 맡길 수 있는지 상상해보는 것입니다.
+              </p>
+            </section>
 
-          <section style={styles.balanceBox}>
-            <p style={styles.balanceTitle}>균형 관점</p>
-            <p style={styles.balanceText}>
-              비개발자가 바로 쓰기에는 아직 어렵습니다. 하지만 “앞으로 AI
-              서비스가 단순 답변을 넘어 실제 웹 작업을 대신한다”는 흐름을
-              이해하기에는 좋은 자료입니다.
-            </p>
-          </section>
+            <section className="brf-inner-box-plain">
+              <p className="brf-inner-title-plain">균형 관점</p>
+              <p className="brf-inner-text">
+                비개발자가 바로 쓰기에는 아직 어렵습니다. 하지만 “앞으로 AI
+                서비스가 단순 답변을 넘어 실제 웹 작업을 대신한다”는 흐름을
+                이해하기에는 좋은 자료입니다.
+              </p>
+            </section>
 
-          <section style={styles.actionBox}>
-            <p style={styles.actionTitle}>오늘 딱 하나 할 일</p>
-            <p style={styles.actionText}>
-              Tabstack 소개 페이지를 읽고 “AI가 웹에서 대신 해주면 좋을 일”을
-              3개 적어보세요. 예: 경쟁사 가격 조사, 채용공고 수집, 여행지 후보
-              비교. 그중 하나를 골라 이 작업을 사람이 하면 몇 단계가 필요한지만
-              적어봅니다.
-            </p>
-          </section>
+            <section className="brf-inner-box">
+              <p className="brf-inner-title">오늘 딱 하나 할 일</p>
+              <p className="brf-inner-text">
+                Tabstack 소개 페이지를 읽고 “AI가 웹에서 대신 해주면 좋을 일”을
+                3개 적어보세요. 예: 경쟁사 가격 조사, 채용공고 수집, 여행지 후보
+                비교. 그중 하나를 골라 이 작업을 사람이 하면 몇 단계가
+                필요한지만 적어봅니다.
+              </p>
+            </section>
 
-          <button type="button" style={styles.previewReadButton}>
-            원문 보기
-          </button>
+            <span className="brf-fake-btn">원문 보기</span>
 
-          <section style={styles.feedbackPreviewBox}>
-            <div style={styles.feedbackPreviewHeader}>
-              <p style={styles.feedbackPreviewTitle}>
+            <section>
+              <p className="brf-inner-title-plain" style={{ marginBottom: 4 }}>
                 이 버튼이 다음 브리핑을 바꿉니다
               </p>
-              <p style={styles.feedbackPreviewDescription}>
+              <p
+                className="brf-opt-desc"
+                style={{ marginTop: 0, marginBottom: 4 }}
+              >
                 하나만 눌러도 다음 자료 선택, 난이도, Action hint 추천 점수에
                 반영됩니다.
               </p>
+
+              <div className="brf-feedback-grid">
+                <FeedbackPreviewButton title="좋음">
+                  비슷한 자료를 더 받을래요
+                </FeedbackPreviewButton>
+                <FeedbackPreviewButton title="더 깊게">
+                  이 방향을 더 심화할래요
+                </FeedbackPreviewButton>
+                <FeedbackPreviewButton title="별로">
+                  다음 추천에서 낮출게요
+                </FeedbackPreviewButton>
+                <FeedbackPreviewButton title="실행해봄">
+                  실행 가능한 방향을 더 줄게요
+                </FeedbackPreviewButton>
+                <FeedbackPreviewButton title="실행안해봄">
+                  난이도와 시간을 다시 맞출게요
+                </FeedbackPreviewButton>
+              </div>
+            </section>
+          </article>
+
+          <aside>
+            <div className="brf-card" style={{ marginBottom: 16 }}>
+              <p className="brf-kicker">받게 되는 것</p>
+              <h3 className="brf-card-title" style={{ marginBottom: 8 }}>
+                개인 맞춤 AI 브리핑
+              </h3>
+              <div className="brf-check-list">
+                <PreviewCheckItem>지금 볼 만한 AI 자료</PreviewCheckItem>
+                <PreviewCheckItem>이 자료가 필요한 이유</PreviewCheckItem>
+                <PreviewCheckItem>10분·30분·2시간 실행 제안</PreviewCheckItem>
+                <PreviewCheckItem>
+                  좋음 / 더 깊게 / 별로 피드백 반영
+                </PreviewCheckItem>
+                <PreviewCheckItem>
+                  반응이 쌓일수록 더 정확해지는 추천
+                </PreviewCheckItem>
+              </div>
+              <p className="brf-build-muted">
+                목표는 AI를 많이 아는 것이 아닙니다. AI와 함께 무언가를
+                만들어내는 것입니다.
+              </p>
             </div>
 
-            <div
-              style={{
-                ...styles.feedbackButtonGrid,
-                ...(isMobile ? styles.mobileFeedbackButtonGrid : {}),
-              }}
-            >
-              <FeedbackPreviewButton title="좋음">
-                비슷한 자료를 더 받을래요
-              </FeedbackPreviewButton>
-              <FeedbackPreviewButton title="더 깊게">
-                이 방향을 더 심화할래요
-              </FeedbackPreviewButton>
-              <FeedbackPreviewButton title="별로">
-                다음 추천에서 낮출게요
-              </FeedbackPreviewButton>
-              <FeedbackPreviewButton title="실행해봄">
-                실행 가능한 방향을 더 줄게요
-              </FeedbackPreviewButton>
-              <FeedbackPreviewButton title="실행안해봄">
-                난이도와 시간을 다시 맞출게요
-              </FeedbackPreviewButton>
+            <div className="brf-card">
+              <p className="brf-kicker">왜 보여드리나요?</p>
+              <h3 className="brf-card-title" style={{ marginBottom: 8 }}>
+                메일을 넣기 전, 받을 결과물을 먼저 확인할 수 있어야 합니다.
+              </h3>
+              <p className="brf-inner-text">
+                Personal AI Briefing은 뉴스 목록이 아니라 “이 자료가 왜 나에게
+                왔는지”와 “오늘 하나만 한다면 무엇을 할지”를 함께 보냅니다.
+              </p>
+              <div className="brf-check-list">
+                <PreviewCheckItem>자료 1개를 고르는 이유</PreviewCheckItem>
+                <PreviewCheckItem>초보자도 이해할 핵심 요약</PreviewCheckItem>
+                <PreviewCheckItem>균형 잡힌 관점</PreviewCheckItem>
+                <PreviewCheckItem>이번 주 가능한 행동 1개</PreviewCheckItem>
+                <PreviewCheckItem>다음 추천을 바꾸는 피드백</PreviewCheckItem>
+              </div>
             </div>
-          </section>
-        </article>
-
-        <aside style={styles.previewExplanationBox}>
-          <p style={styles.previewExplanationKicker}>왜 보여드리나요?</p>
-          <h3 style={styles.previewExplanationTitle}>
-            메일을 넣기 전, 받을 결과물을 먼저 확인할 수 있어야 합니다.
-          </h3>
-          <p style={styles.previewExplanationText}>
-            Personal AI Briefing은 뉴스 목록이 아니라 “이 자료가 왜 나에게
-            왔는지”와 “오늘 하나만 한다면 무엇을 할지”를 함께 보냅니다.
-          </p>
-          <div style={styles.previewExplanationList}>
-            <PreviewCheckItem>자료 1개를 고르는 이유</PreviewCheckItem>
-            <PreviewCheckItem>초보자도 이해할 핵심 요약</PreviewCheckItem>
-            <PreviewCheckItem>균형 잡힌 관점</PreviewCheckItem>
-            <PreviewCheckItem>이번 주 가능한 행동 1개</PreviewCheckItem>
-            <PreviewCheckItem>다음 추천을 바꾸는 피드백</PreviewCheckItem>
-          </div>
-        </aside>
+          </aside>
+        </div>
       </div>
     </section>
   );
@@ -1275,23 +1136,23 @@ function FeedbackPreviewButton({
   children: ReactNode;
 }) {
   return (
-    <div style={styles.feedbackPreviewButton}>
-      <strong style={styles.feedbackPreviewButtonTitle}>{title}</strong>
-      <span style={styles.feedbackPreviewButtonText}>{children}</span>
+    <div className="brf-feedback-item">
+      <strong>{title}</strong>
+      <span>{children}</span>
     </div>
   );
 }
 
 function PreviewCheckItem({ children }: { children: ReactNode }) {
   return (
-    <div style={styles.previewCheckItem}>
-      <span style={styles.previewCheckMark}>✓</span>
+    <div className="brf-check-item">
+      <span className="mark">✓</span>
       <span>{children}</span>
     </div>
   );
 }
 
-function BuildSection({ isMobile }: { isMobile: boolean }) {
+function BuildSection() {
   const [buildEmail, setBuildEmail] = useState("");
   const [buildName, setBuildName] = useState("");
   const [wantToBuild, setWantToBuild] = useState("");
@@ -1386,1483 +1247,142 @@ function BuildSection({ isMobile }: { isMobile: boolean }) {
   }
 
   return (
-    <section
-      style={{
-        ...styles.buildSection,
-        ...(isMobile ? styles.mobileBuildSection : {}),
-      }}
-    >
-      <div
-        style={{
-          ...styles.buildHeader,
-          ...(isMobile ? styles.mobileBuildHeader : {}),
-        }}
-      >
-        <div>
-          <p style={styles.buildKicker}>Personal AI Build</p>
-          <h2
-            style={{
-              ...styles.buildTitle,
-              ...(isMobile ? styles.mobileBuildTitle : {}),
-            }}
-          >
-            충분히 반응이 쌓이면,
-            <br />
-            이제 직접 만들 차례입니다.
-          </h2>
+    <section className="brf-section">
+      <div className="brf-shell">
+        <p className="brf-kicker">Personal AI Build</p>
+        <h2 className="brf-h2">
+          충분히 반응이 쌓이면,
+          <br />
+          이제 직접 만들 차례입니다.
+        </h2>
+
+        <div className="brf-lock">
+          <strong>50+</strong>
+          <span>피드백 50개 이상부터 신청 가능</span>
         </div>
 
-        <div style={styles.buildLockBox}>
-          <span style={styles.buildLockNumber}>50+</span>
-          <span style={styles.buildLockText}>
-            피드백 50개 이상부터 신청 가능
-          </span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          ...styles.buildGrid,
-          ...(isMobile ? styles.mobileBuildGrid : {}),
-        }}
-      >
-        <div style={styles.buildTextBox}>
-          <p style={styles.buildParagraph}>
-            Personal AI Build는 AI로 직접 무언가를 만들고 싶은 사람을 위한 1:1
-            방향 상담입니다.
-          </p>
-          <p style={styles.buildParagraph}>
-            사이트, 자동화, 글쓰기, 콘텐츠, 작은 서비스, 사업 아이디어까지.
-            막연한 생각을 실제 실행 순서로 바꾸는 과정입니다.
-          </p>
-          <p style={styles.buildMuted}>
-            아직은 충분한 피드백이 쌓인 사람에게만 열립니다. 당신이 어떤 자료에
-            반응했고, 무엇을 어려워했고, 실제로 무엇을 해봤는지 알아야 더 정확한
-            방향을 제안할 수 있기 때문입니다.
-          </p>
-
-          <div style={styles.buildConditionBox}>
-            <span style={styles.buildConditionLabel}>신청 조건</span>
-            <span style={styles.buildConditionText}>
-              피드백 {requiredFeedbackCount}개 이상
-            </span>
-            <p style={styles.buildConditionNote}>
-              같은 이메일로 남긴 자료 평가와 실행 여부 피드백을 기준으로
-              확인합니다.
-              {feedbackCount !== null
-                ? ` 현재 확인된 피드백은 ${feedbackCount}개입니다.`
-                : ""}
+        <div className="brf-build-grid">
+          <div>
+            <p className="brf-build-para">
+              Personal AI Build는 AI로 직접 무언가를 만들고 싶은 사람을 위한
+              1:1 방향 상담입니다.
             </p>
-          </div>
-        </div>
+            <p className="brf-build-para">
+              사이트, 자동화, 글쓰기, 콘텐츠, 작은 서비스, 사업 아이디어까지.
+              막연한 생각을 실제 실행 순서로 바꾸는 과정입니다.
+            </p>
+            <p className="brf-build-muted">
+              아직은 충분한 피드백이 쌓인 사람에게만 열립니다. 당신이 어떤
+              자료에 반응했고, 무엇을 어려워했고, 실제로 무엇을 해봤는지 알아야
+              더 정확한 방향을 제안할 수 있기 때문입니다.
+            </p>
 
-        <form style={styles.buildFormMock} onSubmit={handleBuildSubmit}>
-          <p style={styles.buildFormTitle}>상담 신청</p>
-
-          <label style={styles.buildLabel}>
-            이메일
-            <input
-              style={styles.buildInput}
-              type="email"
-              value={buildEmail}
-              onChange={(event) => setBuildEmail(event.target.value)}
-              placeholder="briefing@example.com"
-              required
-            />
-          </label>
-
-          <label style={styles.buildLabel}>
-            이름
-            <input
-              style={styles.buildInput}
-              type="text"
-              value={buildName}
-              onChange={(event) => setBuildName(event.target.value)}
-              placeholder="선택 입력"
-            />
-          </label>
-
-          <label style={styles.buildLabel}>
-            무엇을 만들고 싶나요?
-            <textarea
-              style={styles.buildTextarea}
-              value={wantToBuild}
-              onChange={(event) => setWantToBuild(event.target.value)}
-              placeholder="예: 개인 웹사이트, 자동화 도구, 콘텐츠 채널, 작은 서비스, 사업 아이디어"
-              required
-            />
-          </label>
-
-          <label style={styles.buildLabel}>
-            현재 어디서 막혀 있나요?
-            <textarea
-              style={styles.buildTextarea}
-              value={blockedPoint}
-              onChange={(event) => setBlockedPoint(event.target.value)}
-              placeholder="예: 아이디어는 있는데 구현 순서를 모르겠음, 어떤 AI 도구를 써야 할지 모르겠음"
-              required
-            />
-          </label>
-
-          <label style={styles.buildLabel}>
-            AI를 어느 정도 활용해봤나요?
-            <textarea
-              style={styles.buildTextareaSmall}
-              value={aiExperience}
-              onChange={(event) => setAiExperience(event.target.value)}
-              placeholder="예: ChatGPT로 글쓰기만 해봄, 사이트 제작은 처음, 자동화는 안 해봄"
-            />
-          </label>
-
-          <label style={styles.buildLabel}>
-            어떤 도움을 받고 싶나요?
-            <textarea
-              style={styles.buildTextareaSmall}
-              value={helpType}
-              onChange={(event) => setHelpType(event.target.value)}
-              placeholder="예: 실행 순서 정리, 도구 추천, 첫 화면 설계, 기능 우선순위 정리"
-            />
-          </label>
-
-          <button
-            type="submit"
-            style={{
-              ...styles.buildSubmitButton,
-              opacity: buildSubmitting ? 0.65 : 1,
-            }}
-            disabled={buildSubmitting}
-          >
-            {buildSubmitting ? "신청 확인 중..." : "상담 신청하기"}
-          </button>
-
-          {buildMessage && (
-            <div
-              style={{
-                ...styles.buildMessageBox,
-                ...(buildSuccess
-                  ? styles.buildMessageSuccess
-                  : styles.buildMessageError),
-              }}
-            >
-              {buildMessage}
+            <div className="brf-condition">
+              <span>신청 조건</span>
+              <strong>피드백 {requiredFeedbackCount}개 이상</strong>
+              <p>
+                같은 이메일로 남긴 자료 평가와 실행 여부 피드백을 기준으로
+                확인합니다.
+                {feedbackCount !== null
+                  ? ` 현재 확인된 피드백은 ${feedbackCount}개입니다.`
+                  : ""}
+              </p>
             </div>
-          )}
+          </div>
 
-          <p style={styles.buildFormNote}>
-            피드백이 부족하면 신청은 저장되지 않습니다. 먼저 브리핑에 반응을
-            남겨주세요.
-          </p>
-        </form>
+          <form className="brf-card" onSubmit={handleBuildSubmit}>
+            <h3 className="brf-card-title" style={{ marginBottom: 18 }}>
+              상담 신청
+            </h3>
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+            >
+              <label className="brf-label">
+                이메일
+                <input
+                  className="brf-input"
+                  type="email"
+                  value={buildEmail}
+                  onChange={(event) => setBuildEmail(event.target.value)}
+                  placeholder="briefing@example.com"
+                  required
+                />
+              </label>
+
+              <label className="brf-label">
+                이름
+                <input
+                  className="brf-input"
+                  type="text"
+                  value={buildName}
+                  onChange={(event) => setBuildName(event.target.value)}
+                  placeholder="선택 입력"
+                />
+              </label>
+
+              <label className="brf-label">
+                무엇을 만들고 싶나요?
+                <textarea
+                  className="brf-textarea"
+                  value={wantToBuild}
+                  onChange={(event) => setWantToBuild(event.target.value)}
+                  placeholder="예: 개인 웹사이트, 자동화 도구, 콘텐츠 채널, 작은 서비스, 사업 아이디어"
+                  required
+                />
+              </label>
+
+              <label className="brf-label">
+                현재 어디서 막혀 있나요?
+                <textarea
+                  className="brf-textarea"
+                  value={blockedPoint}
+                  onChange={(event) => setBlockedPoint(event.target.value)}
+                  placeholder="예: 아이디어는 있는데 구현 순서를 모르겠음, 어떤 AI 도구를 써야 할지 모르겠음"
+                  required
+                />
+              </label>
+
+              <label className="brf-label">
+                AI를 어느 정도 활용해봤나요?
+                <textarea
+                  className="brf-textarea"
+                  style={{ minHeight: 72 }}
+                  value={aiExperience}
+                  onChange={(event) => setAiExperience(event.target.value)}
+                  placeholder="예: ChatGPT로 글쓰기만 해봄, 사이트 제작은 처음, 자동화는 안 해봄"
+                />
+              </label>
+
+              <label className="brf-label">
+                어떤 도움을 받고 싶나요?
+                <textarea
+                  className="brf-textarea"
+                  style={{ minHeight: 72 }}
+                  value={helpType}
+                  onChange={(event) => setHelpType(event.target.value)}
+                  placeholder="예: 실행 순서 정리, 도구 추천, 첫 화면 설계, 기능 우선순위 정리"
+                />
+              </label>
+
+              <button type="submit" className="brf-btn" disabled={buildSubmitting}>
+                {buildSubmitting ? "신청 확인 중..." : "상담 신청하기"}
+              </button>
+            </div>
+
+            {buildMessage && (
+              <div className={`brf-msg ${buildSuccess ? "success" : "error"}`}>
+                {buildMessage}
+              </div>
+            )}
+
+            <p className="brf-form-note">
+              피드백이 부족하면 신청은 저장되지 않습니다. 먼저 브리핑에 반응을
+              남겨주세요.
+            </p>
+          </form>
+        </div>
       </div>
     </section>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  page: {
-    position: "relative",
-    minHeight: "100vh",
-    padding: "46px 18px",
-    color: "#f4f0e8",
-    background: "#050806",
-    overflowX: "hidden",
-  },
-  mobilePage: {
-    padding: "24px 12px",
-  },
-  monetLayer: {
-    position: "fixed",
-    inset: 0,
-    backgroundImage: "url('/monet-bridge.png')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    opacity: 0.92,
-    filter: "blur(0.2px) saturate(1.18) contrast(1.12) brightness(1.08)",
-    transform: "scale(1.03)",
-    zIndex: 0,
-    pointerEvents: "none",
-  },
-  darkLayer: {
-    position: "fixed",
-    inset: 0,
-    background:
-      "linear-gradient(90deg, rgba(3, 7, 6, 0.66) 0%, rgba(5, 12, 10, 0.36) 42%, rgba(3, 7, 6, 0.58) 100%), radial-gradient(circle at 22% 12%, rgba(230, 231, 204, 0.08), transparent 28%)",
-    zIndex: 1,
-    pointerEvents: "none",
-  },
-  shell: {
-    position: "relative",
-    zIndex: 2,
-    width: "100%",
-    maxWidth: 1180,
-    margin: "0 auto",
-  },
-  mobileShell: {
-    maxWidth: "100%",
-  },
-  hero: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.12fr) minmax(320px, 0.88fr)",
-    gap: 28,
-    alignItems: "stretch",
-    marginBottom: 24,
-  },
-  mobileHero: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    marginBottom: 16,
-  },
-  heroText: {
-    padding: "12px 0 0",
-    minWidth: 0,
-  },
-  mobileHeroText: {
-    padding: "2px 0 0",
-    width: "100%",
-  },
-  badge: {
-    display: "inline-block",
-    margin: "0 0 24px",
-    padding: "8px 0",
-    borderTop: "1px solid rgba(244, 240, 232, 0.72)",
-    borderBottom: "1px solid rgba(244, 240, 232, 0.72)",
-    color: "#f4f0e8",
-    fontSize: 14,
-    fontWeight: 700,
-    letterSpacing: "0.01em",
-  },
-  mobileBadge: {
-    marginBottom: 16,
-    fontSize: 12,
-  },
-  title: {
-    margin: 0,
-    maxWidth: 820,
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: "clamp(52px, 7.1vw, 94px)",
-    lineHeight: 1.18,
-    letterSpacing: "-0.075em",
-    wordBreak: "keep-all",
-    color: "#fbf4df",
-    fontWeight: 600,
-    textShadow: "0 22px 56px rgba(0,0,0,0.48)",
-  },
-  mobileTitle: {
-    fontSize: 46,
-    lineHeight: 1.2,
-    letterSpacing: "-0.065em",
-    maxWidth: "100%",
-  },
-  description: {
-    maxWidth: 760,
-    margin: "34px 0 0",
-    color: "#f4f0e8",
-    fontSize: 18,
-    lineHeight: 1.95,
-    fontWeight: 500,
-    wordBreak: "keep-all",
-    textShadow: "0 8px 24px rgba(0,0,0,0.4)",
-  },
-  mobileDescription: {
-    marginTop: 20,
-    fontSize: 15,
-    lineHeight: 1.8,
-    maxWidth: "100%",
-  },
-  descriptionSmall: {
-    maxWidth: 760,
-    margin: "14px 0 0",
-    color: "rgba(244, 240, 232, 0.78)",
-    fontSize: 15,
-    lineHeight: 1.9,
-    fontWeight: 400,
-    wordBreak: "keep-all",
-  },
-  mobileDescriptionSmall: {
-    fontSize: 14,
-    lineHeight: 1.74,
-  },
-  promiseGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gap: 0,
-    marginTop: 42,
-    maxWidth: 850,
-    borderTop: "1px solid rgba(230, 231, 204, 0.3)",
-    borderLeft: "1px solid rgba(230, 231, 204, 0.3)",
-    background: "rgba(5, 15, 12, 0.34)",
-    backdropFilter: "blur(4px)",
-  },
-  mobilePromiseGrid: {
-    gridTemplateColumns: "1fr 1fr",
-    marginTop: 24,
-    maxWidth: "100%",
-  },
-  promiseItem: {
-    padding: 16,
-    borderRight: "1px solid rgba(230, 231, 204, 0.3)",
-    borderBottom: "1px solid rgba(230, 231, 204, 0.3)",
-    minWidth: 0,
-  },
-  promiseNumber: {
-    display: "block",
-    marginBottom: 22,
-    color: "#dce6b8",
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  promiseTitle: {
-    display: "block",
-    marginBottom: 7,
-    color: "#f7f1df",
-    fontSize: 17,
-    fontWeight: 700,
-  },
-  promiseText: {
-    display: "block",
-    color: "rgba(244, 240, 232, 0.78)",
-    fontSize: 13,
-    lineHeight: 1.62,
-    wordBreak: "keep-all",
-  },
-  previewPanel: {
-    alignSelf: "end",
-    padding: 28,
-    background:
-      "linear-gradient(145deg, rgba(14, 28, 23, 0.72), rgba(13, 19, 24, 0.68))",
-    border: "1px solid rgba(230, 231, 204, 0.3)",
-    boxShadow: "18px 18px 0 rgba(217, 225, 178, 0.08)",
-    backdropFilter: "blur(7px)",
-    minWidth: 0,
-  },
-  mobilePreviewPanel: {
-    alignSelf: "stretch",
-    padding: 18,
-    width: "100%",
-    boxSizing: "border-box",
-    boxShadow: "8px 8px 0 rgba(217, 225, 178, 0.08)",
-  },
-  previewEyebrow: {
-    margin: "0 0 10px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  previewTitle: {
-    margin: 0,
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 30,
-    lineHeight: 1.42,
-    letterSpacing: "-0.055em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  previewList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 13,
-    marginTop: 24,
-  },
-  previewRow: {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-    color: "rgba(244, 240, 232, 0.88)",
-    fontSize: 14,
-    lineHeight: 1.68,
-    wordBreak: "keep-all",
-  },
-  previewDot: {
-    width: 7,
-    height: 7,
-    background: "#dce6b8",
-    marginTop: 8,
-    flex: "0 0 auto",
-  },
-  previewNote: {
-    margin: "24px 0 0",
-    paddingTop: 20,
-    borderTop: "1px solid rgba(230, 231, 204, 0.22)",
-    color: "rgba(244, 240, 232, 0.72)",
-    fontSize: 13,
-    lineHeight: 1.82,
-    wordBreak: "keep-all",
-  },
-  statementBox: {
-    marginBottom: 24,
-    padding: "30px 34px",
-    borderTop: "1px solid rgba(230, 231, 204, 0.32)",
-    borderBottom: "1px solid rgba(230, 231, 204, 0.32)",
-    background:
-      "linear-gradient(90deg, rgba(3, 8, 7, 0.44), rgba(17, 47, 33, 0.2), rgba(3, 8, 7, 0.38))",
-    backdropFilter: "blur(4px)",
-  },
-  mobileStatementBox: {
-    padding: "20px 18px",
-  },
-  statementText: {
-    margin: 0,
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 26,
-    lineHeight: 1.82,
-    letterSpacing: "-0.055em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-    textShadow: "0 10px 24px rgba(0,0,0,0.38)",
-  },
-  realPreviewSection: {
-    padding: 30,
-    marginBottom: 24,
-    border: "1px solid rgba(230, 231, 204, 0.3)",
-    background:
-      "linear-gradient(145deg, rgba(8, 21, 16, 0.72), rgba(5, 10, 12, 0.7))",
-    color: "#f7f1df",
-    backdropFilter: "blur(7px)",
-  },
-  mobileRealPreviewSection: {
-    padding: 18,
-  },
-  realPreviewHeader: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.72fr)",
-    gap: 22,
-    alignItems: "end",
-    marginBottom: 24,
-  },
-  mobileRealPreviewHeader: {
-    gridTemplateColumns: "1fr",
-    gap: 10,
-  },
-  realPreviewKicker: {
-    margin: "0 0 10px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  realPreviewTitle: {
-    margin: 0,
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 46,
-    lineHeight: 1.24,
-    letterSpacing: "-0.065em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  mobileRealPreviewTitle: {
-    fontSize: 31,
-  },
-  realPreviewDescription: {
-    margin: 0,
-    color: "rgba(247, 241, 223, 0.7)",
-    fontSize: 14,
-    lineHeight: 1.8,
-    wordBreak: "keep-all",
-  },
-  realPreviewGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 320px",
-    gap: 22,
-    alignItems: "start",
-  },
-  mobileRealPreviewGrid: {
-    gridTemplateColumns: "1fr",
-  },
-  briefingCard: {
-    padding: 22,
-    background: "rgba(247, 241, 223, 0.96)",
-    color: "#07100c",
-    border: "1px solid rgba(247, 241, 223, 0.72)",
-    boxShadow: "0 22px 70px rgba(0,0,0,0.28)",
-  },
-  briefingCardTop: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 16,
-  },
-  briefingTagPrimary: {
-    display: "inline-flex",
-    alignItems: "center",
-    minHeight: 28,
-    padding: "0 10px",
-    background: "#eef0d2",
-    color: "#1f3f2e",
-    border: "1px solid rgba(7, 16, 12, 0.12)",
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  briefingTag: {
-    display: "inline-flex",
-    alignItems: "center",
-    minHeight: 28,
-    padding: "0 10px",
-    background: "#f7f1df",
-    color: "rgba(7, 16, 12, 0.72)",
-    border: "1px solid rgba(7, 16, 12, 0.12)",
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  briefingCardTitle: {
-    margin: "0 0 18px",
-    color: "#07100c",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 28,
-    lineHeight: 1.46,
-    letterSpacing: "-0.055em",
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  mobileBriefingCardTitle: {
-    fontSize: 22,
-    lineHeight: 1.48,
-  },
-  reasonBox: {
-    padding: 18,
-    marginBottom: 18,
-    background: "#fff4e6",
-    border: "1px solid rgba(197, 89, 17, 0.25)",
-  },
-  reasonTitle: {
-    margin: "0 0 10px",
-    color: "#a0440e",
-    fontSize: 14,
-    fontWeight: 900,
-  },
-  reasonList: {
-    margin: 0,
-    paddingLeft: 18,
-    color: "#b45309",
-  },
-  reasonItem: {
-    margin: "0 0 6px",
-    fontSize: 13,
-    lineHeight: 1.7,
-    wordBreak: "keep-all",
-  },
-  briefingTextBlock: {
-    marginBottom: 16,
-  },
-  briefingSmallTitle: {
-    margin: "0 0 8px",
-    color: "#07100c",
-    fontSize: 14,
-    fontWeight: 900,
-  },
-  briefingParagraph: {
-    margin: 0,
-    color: "rgba(7, 16, 12, 0.72)",
-    fontSize: 14,
-    lineHeight: 1.86,
-    wordBreak: "keep-all",
-  },
-  balanceBox: {
-    padding: 16,
-    marginBottom: 16,
-    background: "rgba(7, 16, 12, 0.04)",
-    border: "1px solid rgba(7, 16, 12, 0.08)",
-  },
-  balanceTitle: {
-    margin: "0 0 8px",
-    color: "#07100c",
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  balanceText: {
-    margin: 0,
-    color: "rgba(7, 16, 12, 0.64)",
-    fontSize: 13,
-    lineHeight: 1.78,
-    wordBreak: "keep-all",
-  },
-  actionBox: {
-    padding: 18,
-    marginBottom: 16,
-    background: "#e8fff1",
-    border: "1px solid rgba(16, 185, 129, 0.28)",
-  },
-  actionTitle: {
-    margin: "0 0 8px",
-    color: "#047857",
-    fontSize: 14,
-    fontWeight: 900,
-  },
-  actionText: {
-    margin: 0,
-    color: "#047857",
-    fontSize: 14,
-    lineHeight: 1.82,
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  previewReadButton: {
-    minHeight: 44,
-    marginBottom: 16,
-    padding: "0 16px",
-    border: "none",
-    background: "#0b1711",
-    color: "#f7f1df",
-    fontSize: 14,
-    fontWeight: 900,
-  },
-  feedbackPreviewBox: {
-    padding: 18,
-    background: "rgba(7, 16, 12, 0.03)",
-    border: "1px solid rgba(7, 16, 12, 0.12)",
-  },
-  feedbackPreviewHeader: {
-    marginBottom: 14,
-  },
-  feedbackPreviewTitle: {
-    margin: "0 0 6px",
-    color: "#07100c",
-    fontSize: 14,
-    fontWeight: 900,
-  },
-  feedbackPreviewDescription: {
-    margin: 0,
-    color: "rgba(7, 16, 12, 0.58)",
-    fontSize: 12,
-    lineHeight: 1.62,
-    wordBreak: "keep-all",
-  },
-  feedbackButtonGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 8,
-  },
-  mobileFeedbackButtonGrid: {
-    gridTemplateColumns: "1fr 1fr",
-  },
-  feedbackPreviewButton: {
-    minHeight: 66,
-    padding: 10,
-    background: "#fffdf4",
-    border: "1px solid rgba(7, 16, 12, 0.18)",
-    color: "#07100c",
-  },
-  feedbackPreviewButtonTitle: {
-    display: "block",
-    marginBottom: 4,
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  feedbackPreviewButtonText: {
-    display: "block",
-    color: "rgba(7, 16, 12, 0.56)",
-    fontSize: 11,
-    lineHeight: 1.45,
-    wordBreak: "keep-all",
-  },
-  previewExplanationBox: {
-    padding: 22,
-    border: "1px solid rgba(230, 231, 204, 0.24)",
-    background: "rgba(5, 11, 9, 0.56)",
-  },
-  previewExplanationKicker: {
-    margin: "0 0 10px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  previewExplanationTitle: {
-    margin: 0,
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 25,
-    lineHeight: 1.44,
-    letterSpacing: "-0.05em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  previewExplanationText: {
-    margin: "14px 0 0",
-    color: "rgba(247, 241, 223, 0.68)",
-    fontSize: 14,
-    lineHeight: 1.78,
-    wordBreak: "keep-all",
-  },
-  previewExplanationList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    marginTop: 18,
-    paddingTop: 18,
-    borderTop: "1px solid rgba(230, 231, 204, 0.16)",
-  },
-  previewCheckItem: {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-    color: "rgba(247, 241, 223, 0.8)",
-    fontSize: 13,
-    lineHeight: 1.62,
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  previewCheckMark: {
-    color: "#dce6b8",
-    fontWeight: 900,
-    flex: "0 0 auto",
-  },
-  card: {
-    padding: 30,
-    background: "rgba(247, 241, 223, 0.94)",
-    color: "#07100c",
-    boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
-    border: "1px solid rgba(247, 241, 223, 0.72)",
-    width: "100%",
-    boxSizing: "border-box",
-    marginBottom: 24,
-    backdropFilter: "blur(10px)",
-  },
-  mobileCard: {
-    padding: 16,
-  },
-  cardHeader: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.7fr)",
-    gap: 18,
-    alignItems: "end",
-    marginBottom: 26,
-    paddingBottom: 20,
-    borderBottom: "1px solid rgba(7, 16, 12, 0.16)",
-  },
-  mobileCardHeader: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "stretch",
-    gap: 10,
-    marginBottom: 18,
-  },
-  cardKicker: {
-    margin: "0 0 8px",
-    color: "#203428",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  cardTitle: {
-    margin: 0,
-    color: "#07100c",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 38,
-    lineHeight: 1.32,
-    letterSpacing: "-0.06em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  mobileCardTitle: {
-    fontSize: 27,
-    lineHeight: 1.32,
-  },
-  cardSubtext: {
-    margin: 0,
-    color: "rgba(7, 16, 12, 0.62)",
-    fontSize: 14,
-    lineHeight: 1.78,
-    wordBreak: "keep-all",
-  },
-  formBlock: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 14,
-    marginBottom: 24,
-  },
-  mobileFormBlock: {
-    gridTemplateColumns: "1fr",
-    gap: 12,
-    marginBottom: 18,
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 9,
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#07100c",
-    minWidth: 0,
-  },
-  input: {
-    width: "100%",
-    height: 54,
-    border: "1px solid rgba(7, 16, 12, 0.24)",
-    padding: "0 14px",
-    fontSize: 15,
-    color: "#07100c",
-    background: "#fffdf4",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  loadingText: {
-    margin: "4px 0 20px",
-    padding: 14,
-    background: "rgba(7, 16, 12, 0.05)",
-    color: "rgba(7, 16, 12, 0.62)",
-    fontSize: 14,
-    lineHeight: 1.7,
-    wordBreak: "keep-all",
-  },
-  questionStack: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-  questionBlock: {
-    padding: 20,
-    border: "1px solid rgba(7, 16, 12, 0.18)",
-    background: "#fffdf4",
-    minWidth: 0,
-  },
-  mobileQuestionBlock: {
-    padding: 14,
-  },
-  questionHeader: {
-    display: "flex",
-    gap: 14,
-    alignItems: "flex-start",
-    marginBottom: 15,
-  },
-  mobileQuestionHeader: {
-    gap: 10,
-  },
-  stepBadge: {
-    width: 44,
-    height: 44,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#0b1711",
-    color: "#dce6b8",
-    fontSize: 14,
-    fontWeight: 700,
-    flex: "0 0 auto",
-  },
-  mobileStepBadge: {
-    width: 38,
-    height: 38,
-    fontSize: 13,
-  },
-  questionTitle: {
-    margin: 0,
-    fontSize: 22,
-    letterSpacing: "-0.03em",
-    lineHeight: 1.34,
-    color: "#07100c",
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  mobileQuestionTitle: {
-    fontSize: 19,
-    lineHeight: 1.38,
-  },
-  questionDescription: {
-    margin: "7px 0 0",
-    color: "rgba(7, 16, 12, 0.64)",
-    fontSize: 14,
-    lineHeight: 1.72,
-    wordBreak: "keep-all",
-  },
-  questionHelp: {
-    margin: "7px 0 0",
-    color: "#32685d",
-    fontSize: 13,
-    lineHeight: 1.65,
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  optionGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 10,
-  },
-  mobileOptionGrid: {
-    gridTemplateColumns: "1fr",
-    gap: 9,
-  },
-  optionButton: {
-    width: "100%",
-    minHeight: 94,
-    textAlign: "left",
-    border: "1px solid rgba(7, 16, 12, 0.16)",
-    background: "#f7f1df",
-    padding: 14,
-    cursor: "pointer",
-    color: "#07100c",
-    boxSizing: "border-box",
-  },
-  mobileOptionButton: {
-    minHeight: "auto",
-    padding: 13,
-  },
-  optionButtonSelected: {
-    border: "2px solid #0b1711",
-    background: "#eef0d2",
-    boxShadow: "5px 5px 0 rgba(11, 23, 17, 0.16)",
-  },
-  optionTopLine: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 7,
-  },
-  optionLabel: {
-    display: "block",
-    fontSize: 15,
-    fontWeight: 700,
-    lineHeight: 1.42,
-    wordBreak: "keep-all",
-  },
-  selectedPill: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "4px 7px",
-    background: "#0b1711",
-    color: "#dce6b8",
-    fontSize: 11,
-    fontWeight: 700,
-    flex: "0 0 auto",
-  },
-  optionDescription: {
-    display: "block",
-    fontSize: 13,
-    lineHeight: 1.62,
-    color: "rgba(7, 16, 12, 0.62)",
-    wordBreak: "keep-all",
-  },
-  summaryBox: {
-    marginTop: 22,
-    padding: 18,
-    background: "#0b1711",
-    border: "1px solid #0b1711",
-    color: "#f7f1df",
-  },
-  mobileSummaryBox: {
-    marginTop: 18,
-    padding: 15,
-  },
-  summaryKicker: {
-    margin: "0 0 8px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  summaryText: {
-    margin: 0,
-    color: "#f7f1df",
-    fontSize: 15,
-    lineHeight: 1.82,
-    wordBreak: "keep-all",
-  },
-  submitButton: {
-    width: "100%",
-    height: 62,
-    border: "none",
-    background: "#0b1711",
-    color: "#dce6b8",
-    marginTop: 22,
-    fontSize: 17,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  mobileSubmitButton: {
-    height: 56,
-    fontSize: 15,
-  },
-  messageBox: {
-    marginTop: 16,
-    padding: 15,
-    border: "1px solid",
-    fontSize: 14,
-    lineHeight: 1.7,
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  footerNote: {
-    margin: "14px 0 0",
-    color: "rgba(7, 16, 12, 0.56)",
-    fontSize: 13,
-    lineHeight: 1.68,
-    textAlign: "center",
-    wordBreak: "keep-all",
-  },
-  privacyNotice: {
-    margin: "14px 0 0",
-    padding: 14,
-    background: "rgba(7, 16, 12, 0.04)",
-    border: "1px solid rgba(7, 16, 12, 0.12)",
-    color: "rgba(7, 16, 12, 0.62)",
-    fontSize: 12,
-    lineHeight: 1.72,
-    textAlign: "center",
-    wordBreak: "keep-all",
-  },
-  privacyNoticeText: {
-    margin: "0 0 8px",
-    color: "rgba(7, 16, 12, 0.62)",
-    fontSize: 12,
-    lineHeight: 1.72,
-    textAlign: "center",
-    wordBreak: "keep-all",
-  },
-  privacyLinkRow: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 10,
-    flexWrap: "wrap",
-  },
-  privacyLink: {
-    color: "#0b1711",
-    fontSize: 12,
-    fontWeight: 700,
-    textDecoration: "underline",
-    textUnderlineOffset: 3,
-  },
-  privacyDivider: {
-    color: "rgba(7, 16, 12, 0.32)",
-    fontSize: 12,
-  },
-  successWrap: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 22,
-  },
-  successHero: {
-    padding: 26,
-    background: "#0b1711",
-    border: "1px solid #0b1711",
-  },
-  mobileSuccessHero: {
-    padding: 18,
-  },
-  successBadge: {
-    display: "inline-block",
-    margin: "0 0 12px",
-    padding: "7px 10px",
-    background: "#dce6b8",
-    color: "#0b1711",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  successTitle: {
-    margin: 0,
-    color: "#f7f1df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 36,
-    lineHeight: 1.34,
-    letterSpacing: "-0.055em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  mobileSuccessTitle: {
-    fontSize: 26,
-    lineHeight: 1.34,
-  },
-  successDescription: {
-    maxWidth: 820,
-    margin: "14px 0 0",
-    color: "rgba(247, 241, 223, 0.72)",
-    fontSize: 16,
-    lineHeight: 1.82,
-    wordBreak: "keep-all",
-  },
-  mobileSuccessDescription: {
-    fontSize: 14,
-    lineHeight: 1.74,
-  },
-  successEmailBox: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 10,
-    alignItems: "center",
-    marginTop: 20,
-    padding: 14,
-    background: "rgba(247, 241, 223, 0.08)",
-    border: "1px solid rgba(247, 241, 223, 0.16)",
-    minWidth: 0,
-  },
-  successEmailLabel: {
-    color: "rgba(247, 241, 223, 0.62)",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  successEmail: {
-    color: "#f7f1df",
-    fontSize: 15,
-    fontWeight: 700,
-    wordBreak: "break-all",
-  },
-  resultGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-  },
-  mobileResultGrid: {
-    gridTemplateColumns: "1fr",
-  },
-  resultCard: {
-    padding: 16,
-    background: "#fffdf4",
-    border: "1px solid rgba(7, 16, 12, 0.16)",
-  },
-  resultLabel: {
-    display: "block",
-    marginBottom: 8,
-    color: "rgba(7, 16, 12, 0.58)",
-    fontSize: 12,
-    fontWeight: 700,
-    lineHeight: 1.45,
-  },
-  resultValue: {
-    display: "block",
-    color: "#07100c",
-    fontSize: 16,
-    fontWeight: 700,
-    lineHeight: 1.5,
-    wordBreak: "keep-all",
-  },
-  nextStepBox: {
-    padding: 22,
-    background: "#0b1711",
-    color: "#f7f1df",
-  },
-  mobileNextStepBox: {
-    padding: 16,
-  },
-  nextStepKicker: {
-    margin: "0 0 7px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  nextStepTitle: {
-    margin: "0 0 18px",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 27,
-    lineHeight: 1.44,
-    letterSpacing: "-0.045em",
-    fontWeight: 600,
-  },
-  mobileNextStepTitle: {
-    fontSize: 21,
-  },
-  nextStepList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-  nextStepItem: {
-    display: "flex",
-    gap: 13,
-    padding: 16,
-    background: "rgba(247, 241, 223, 0.07)",
-    border: "1px solid rgba(247, 241, 223, 0.12)",
-  },
-  nextStepNumber: {
-    width: 30,
-    height: 30,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#dce6b8",
-    color: "#0b1711",
-    fontSize: 14,
-    fontWeight: 700,
-    flex: "0 0 auto",
-  },
-  nextStepItemTitle: {
-    display: "block",
-    color: "#f7f1df",
-    fontSize: 15,
-    fontWeight: 700,
-    lineHeight: 1.48,
-    wordBreak: "keep-all",
-  },
-  nextStepItemText: {
-    margin: "5px 0 0",
-    color: "rgba(247, 241, 223, 0.68)",
-    fontSize: 14,
-    lineHeight: 1.7,
-    wordBreak: "keep-all",
-  },
-  briefingExampleBox: {
-    padding: 20,
-    background: "#eef0d2",
-    border: "1px solid rgba(7, 16, 12, 0.14)",
-  },
-  briefingExampleKicker: {
-    margin: "0 0 12px",
-    color: "#07100c",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  briefingExample: {
-    padding: 16,
-    background: "#fffdf4",
-    border: "1px solid rgba(7, 16, 12, 0.12)",
-  },
-  briefingExampleTitle: {
-    display: "block",
-    color: "#07100c",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 18,
-    fontWeight: 600,
-    lineHeight: 1.72,
-    letterSpacing: "-0.04em",
-    wordBreak: "keep-all",
-  },
-  briefingExampleText: {
-    margin: "9px 0 0",
-    color: "rgba(7, 16, 12, 0.62)",
-    fontSize: 14,
-    lineHeight: 1.74,
-    wordBreak: "keep-all",
-  },
-  successActions: {
-    display: "flex",
-    justifyContent: "center",
-  },
-  secondaryButton: {
-    minHeight: 48,
-    border: "1px solid rgba(7, 16, 12, 0.2)",
-    background: "#fffdf4",
-    color: "#07100c",
-    padding: "0 18px",
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  buildSection: {
-    padding: 30,
-    border: "1px solid rgba(230, 231, 204, 0.3)",
-    background:
-      "linear-gradient(145deg, rgba(8, 21, 16, 0.66), rgba(5, 10, 12, 0.68))",
-    color: "#f7f1df",
-    marginBottom: 20,
-    backdropFilter: "blur(7px)",
-  },
-  mobileBuildSection: {
-    padding: 18,
-  },
-  buildHeader: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 220px",
-    gap: 22,
-    alignItems: "start",
-    marginBottom: 26,
-  },
-  mobileBuildHeader: {
-    gridTemplateColumns: "1fr",
-    gap: 14,
-  },
-  buildKicker: {
-    margin: "0 0 10px",
-    color: "#dce6b8",
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  buildTitle: {
-    margin: 0,
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 48,
-    lineHeight: 1.24,
-    letterSpacing: "-0.065em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  mobileBuildTitle: {
-    fontSize: 31,
-    lineHeight: 1.22,
-  },
-  buildLockBox: {
-    padding: 18,
-    border: "1px solid rgba(230, 231, 204, 0.28)",
-    background: "rgba(5, 11, 9, 0.68)",
-  },
-  buildLockNumber: {
-    display: "block",
-    color: "#dce6b8",
-    fontSize: 42,
-    lineHeight: 1,
-    fontWeight: 700,
-    letterSpacing: "-0.04em",
-  },
-  buildLockText: {
-    display: "block",
-    marginTop: 10,
-    color: "rgba(247, 241, 223, 0.72)",
-    fontSize: 13,
-    lineHeight: 1.62,
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  buildGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 0.92fr) minmax(280px, 0.72fr)",
-    gap: 22,
-  },
-  mobileBuildGrid: {
-    gridTemplateColumns: "1fr",
-  },
-  buildTextBox: {
-    padding: 22,
-    border: "1px solid rgba(230, 231, 204, 0.22)",
-    background: "rgba(0, 0, 0, 0.16)",
-  },
-  buildParagraph: {
-    margin: "0 0 14px",
-    color: "#f7f1df",
-    fontSize: 17,
-    lineHeight: 1.82,
-    wordBreak: "keep-all",
-  },
-  buildMuted: {
-    margin: "20px 0 0",
-    paddingTop: 18,
-    borderTop: "1px solid rgba(230, 231, 204, 0.18)",
-    color: "rgba(247, 241, 223, 0.66)",
-    fontSize: 14,
-    lineHeight: 1.76,
-    wordBreak: "keep-all",
-  },
-  buildConditionBox: {
-    marginTop: 22,
-    padding: 16,
-    border: "1px solid rgba(230, 231, 204, 0.22)",
-    background: "rgba(5, 11, 9, 0.46)",
-  },
-  buildConditionLabel: {
-    display: "block",
-    marginBottom: 8,
-    color: "#dce6b8",
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  buildConditionText: {
-    display: "block",
-    color: "#fbf4df",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 18,
-    lineHeight: 1.5,
-    letterSpacing: "-0.04em",
-    fontWeight: 600,
-    wordBreak: "keep-all",
-  },
-  buildConditionNote: {
-    margin: "8px 0 0",
-    color: "rgba(247, 241, 223, 0.62)",
-    fontSize: 13,
-    lineHeight: 1.7,
-    wordBreak: "keep-all",
-  },
-  buildFormMock: {
-    padding: 22,
-    border: "1px solid rgba(247, 241, 223, 0.32)",
-    background: "rgba(247, 241, 223, 0.92)",
-    color: "#07100c",
-  },
-  buildFormTitle: {
-    margin: "0 0 16px",
-    color: "#07100c",
-    fontFamily: notoSerifKr.style.fontFamily,
-    fontSize: 18,
-    lineHeight: 1.5,
-    letterSpacing: "-0.04em",
-    fontWeight: 600,
-  },
-  buildLabel: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    marginBottom: 12,
-    color: "#07100c",
-    fontSize: 13,
-    fontWeight: 700,
-    lineHeight: 1.5,
-  },
-  buildInput: {
-    width: "100%",
-    height: 50,
-    border: "1px solid rgba(7, 16, 12, 0.18)",
-    background: "#fffdf4",
-    color: "#07100c",
-    padding: "0 13px",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  buildTextarea: {
-    width: "100%",
-    minHeight: 94,
-    border: "1px solid rgba(7, 16, 12, 0.18)",
-    background: "#fffdf4",
-    color: "#07100c",
-    padding: "13px",
-    fontSize: 14,
-    lineHeight: 1.65,
-    outline: "none",
-    resize: "vertical",
-    boxSizing: "border-box",
-    fontFamily: notoSansKr.style.fontFamily,
-  },
-  buildTextareaSmall: {
-    width: "100%",
-    minHeight: 74,
-    border: "1px solid rgba(7, 16, 12, 0.18)",
-    background: "#fffdf4",
-    color: "#07100c",
-    padding: "13px",
-    fontSize: 14,
-    lineHeight: 1.65,
-    outline: "none",
-    resize: "vertical",
-    boxSizing: "border-box",
-    fontFamily: notoSansKr.style.fontFamily,
-  },
-  buildSubmitButton: {
-    width: "100%",
-    height: 54,
-    marginTop: 4,
-    border: "none",
-    background: "#0b1711",
-    color: "#dce6b8",
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  buildMessageBox: {
-    marginTop: 12,
-    padding: 14,
-    border: "1px solid",
-    fontSize: 13,
-    lineHeight: 1.7,
-    fontWeight: 700,
-    wordBreak: "keep-all",
-  },
-  buildMessageSuccess: {
-    background: "#eef0d2",
-    borderColor: "rgba(7, 16, 12, 0.16)",
-    color: "#0b1711",
-  },
-  buildMessageError: {
-    background: "#fff1f2",
-    borderColor: "#fecdd3",
-    color: "#be123c",
-  },
-  buildFormNote: {
-    margin: "12px 0 0",
-    color: "rgba(7, 16, 12, 0.54)",
-    fontSize: 12,
-    lineHeight: 1.6,
-    textAlign: "center",
-    wordBreak: "keep-all",
-  },
-};
