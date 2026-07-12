@@ -120,7 +120,7 @@ export default function LabPage() {
           <h1 className="brf-h1 brf-rise" style={{ animationDelay: "0.1s" }}>
             응급실에서는 환자를 봅니다.
             <br />
-            응급실 밖에서는 AI와 회사를 짓습니다.
+            응급실 밖에서는 AI와 함께 회사를 만들어 나갑니다.
           </h1>
           <p className="brf-lead-sub brf-rise" style={{ animationDelay: "0.22s" }}>
             응급의학과 의사가 AI와 협업하며 1인 기업을 만들어가는 기록입니다.
