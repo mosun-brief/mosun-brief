@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     // 활성 상태만 복구합니다.
     const { data: existing, error: findError } = await supabase
       .from("subscribers")
-      .select("id")
+      .select("id, signup_source")
       .eq("email", email)
       .maybeSingle();
 
@@ -73,9 +73,17 @@ export async function POST(request: Request) {
     }
 
     if (existing?.id) {
+      // 브리핑 구독자가 기록도 구독하면 'both'로 승격합니다 (브리핑 발송은 유지).
+      const nextSource =
+        existing.signup_source === "ai-fu" ? "both" : existing.signup_source;
+
       const { error: updateError } = await supabase
         .from("subscribers")
-        .update({ is_active: true, unsubscribed_at: null })
+        .update({
+          is_active: true,
+          unsubscribed_at: null,
+          signup_source: nextSource,
+        })
         .eq("id", existing.id);
 
       if (updateError) {

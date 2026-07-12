@@ -23,14 +23,6 @@ export const metadata: Metadata = {
       "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
     url: "https://brief.mosunbrief.kr",
     siteName: "Mosun Brief — Personal AI Briefing",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Personal AI Briefing 썸네일",
-      },
-    ],
     locale: "ko_KR",
     type: "website",
   },
@@ -39,7 +31,6 @@ export const metadata: Metadata = {
     title: "Mosun Brief – 아직 AI로 무언가를 만들지 못한 당신에게",
     description:
       "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
-    images: ["/og-image.png"],
   },
 };
 
