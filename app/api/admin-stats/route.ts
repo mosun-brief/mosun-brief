@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  timingSafeEqualStr,
+  getClientIp,
+  isRateLimited,
+  recordFailure,
+  recordSuccess,
+} from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -238,18 +245,11 @@ async function readRequestBody(request: Request): Promise<RequestBody> {
 }
 
 function getSecretFromRequest(request: NextRequest, body?: RequestBody) {
+  // 시크릿은 헤더 또는 본문에서만 받습니다. 쿼리스트링(로그·히스토리·Referer 노출)은 받지 않습니다.
   const headerSecret = request.headers.get("x-admin-secret");
 
   if (headerSecret) {
     return headerSecret.trim();
-  }
-
-  const querySecret =
-    request.nextUrl.searchParams.get("secret") ||
-    request.nextUrl.searchParams.get("admin_secret");
-
-  if (querySecret) {
-    return querySecret.trim();
   }
 
   if (body?.admin_secret) {
@@ -260,6 +260,15 @@ function getSecretFromRequest(request: NextRequest, body?: RequestBody) {
 }
 
 function verifyAdminSecret(request: NextRequest, body?: RequestBody) {
+  const ip = getClientIp(request);
+
+  if (isRateLimited(ip)) {
+    return {
+      ok: false,
+      message: "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.",
+    };
+  }
+
   const serverSecret = process.env.ADMIN_SECRET;
 
   if (!serverSecret) {
@@ -278,13 +287,15 @@ function verifyAdminSecret(request: NextRequest, body?: RequestBody) {
     };
   }
 
-  if (requestSecret !== serverSecret) {
+  if (!timingSafeEqualStr(requestSecret, serverSecret)) {
+    recordFailure(ip);
     return {
       ok: false,
       message: "ADMIN_SECRET이 올바르지 않습니다.",
     };
   }
 
+  recordSuccess(ip);
   return {
     ok: true,
     message: "ok",

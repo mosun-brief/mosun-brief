@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  timingSafeEqualStr,
+  getClientIp,
+  isRateLimited,
+  recordFailure,
+  recordSuccess,
+} from "@/lib/adminAuth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -56,11 +63,22 @@ function getSupabaseAdmin() {
 }
 
 function verifyAdminRequest(request: NextRequest) {
-  const headerSecret = request.headers.get("x-admin-secret") || "";
-  const querySecret = request.nextUrl.searchParams.get("admin_secret") || "";
-  const providedSecret = headerSecret || querySecret;
+  const ip = getClientIp(request);
 
-  return Boolean(adminSecret && providedSecret && providedSecret === adminSecret);
+  if (isRateLimited(ip)) return false;
+
+  // 시크릿은 헤더에서만 받습니다(쿼리스트링 제거).
+  const providedSecret = (request.headers.get("x-admin-secret") || "").trim();
+
+  if (!adminSecret || !providedSecret) return false;
+
+  if (!timingSafeEqualStr(providedSecret, adminSecret)) {
+    recordFailure(ip);
+    return false;
+  }
+
+  recordSuccess(ip);
+  return true;
 }
 
 async function getFeedbackCountForEmail(

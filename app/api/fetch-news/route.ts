@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  timingSafeEqualStr,
+  getClientIp,
+  isRateLimited,
+  recordFailure,
+  recordSuccess,
+} from "@/lib/adminAuth";
 
 type HnHit = {
   title?: string;
@@ -108,14 +115,27 @@ function makeSummary(title: string, url: string | null) {
 
 export async function POST(req: NextRequest) {
   try {
-    const secret = req.headers.get("x-admin-secret");
+    const ip = getClientIp(req);
 
-    if (!secret || secret !== adminSecret) {
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요." },
+        { status: 429 }
+      );
+    }
+
+    const secret = (req.headers.get("x-admin-secret") || "").trim();
+
+    if (!secret || !timingSafeEqualStr(secret, adminSecret || "")) {
+      if (secret) recordFailure(ip);
+
       return NextResponse.json(
         { error: "권한이 없습니다. ADMIN_SECRET을 확인하세요." },
         { status: 401 }
       );
     }
+
+    recordSuccess(ip);
 
     const response = await fetch(
       "https://hn.algolia.com/api/v1/search_by_date?query=AI&tags=story&hitsPerPage=10",

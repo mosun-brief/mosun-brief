@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyFeedbackToken } from "@/lib/linkTokens";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ type RequestBody = {
   free_text?: string | null;
 
   feedback_id?: number | string | null;
+
+  token?: string | null;
 };
 
 type SaveFeedbackInput = {
@@ -327,6 +330,7 @@ function buildHtmlPage({
   subscriberEmail,
   newsletterItemId,
   freeTextSaved,
+  token,
 }: {
   feedbackType: NormalizedFeedbackType;
   feedbackId: number | null;
@@ -334,6 +338,7 @@ function buildHtmlPage({
   subscriberEmail: string | null;
   newsletterItemId: number | null;
   freeTextSaved?: boolean;
+  token?: string | null;
 }) {
   const copy = getFeedbackCopy(feedbackType);
   const groupLabel = getFeedbackGroupLabel(feedbackType);
@@ -352,6 +357,7 @@ function buildHtmlPage({
     <input type="hidden" name="feedback_id" value="${escapeHtml(
       feedbackId ? String(feedbackId) : ""
     )}" />
+    <input type="hidden" name="token" value="${escapeHtml(token || "")}" />
   `;
 
   return `<!doctype html>
@@ -515,6 +521,101 @@ function buildErrorHtmlPage(message: string) {
 </html>`;
 }
 
+// 이메일 링크(GET)는 직접 DB에 쓰지 않고, 브라우저에서 JS로 POST하도록 유도합니다.
+// 메일 보안 스캐너·프리페처는 JS를 실행하지 않으므로 자동 피드백 저장이 발생하지
+// 않고, 실제 사용자의 브라우저에서만 한 번의 이동으로 저장됩니다.
+function buildBridgeHtmlPage(params: {
+  subscriberId: string | null;
+  subscriberEmail: string | null;
+  newsletterItemId: number | null;
+  feedbackType: NormalizedFeedbackType;
+  token: string | null;
+}) {
+  const payload = JSON.stringify({
+    subscriber_id: params.subscriberId,
+    subscriber_email: params.subscriberEmail,
+    newsletter_item_id: params.newsletterItemId,
+    type: params.feedbackType,
+    token: params.token,
+  });
+
+  // <noscript> 폴백: JS가 없으면 사용자가 버튼을 눌러 POST 제출합니다.
+  const noscriptInputs = `
+    <input type="hidden" name="subscriber_id" value="${escapeHtml(
+      params.subscriberId || ""
+    )}" />
+    <input type="hidden" name="subscriber_email" value="${escapeHtml(
+      params.subscriberEmail || ""
+    )}" />
+    <input type="hidden" name="newsletter_item_id" value="${escapeHtml(
+      params.newsletterItemId ? String(params.newsletterItemId) : ""
+    )}" />
+    <input type="hidden" name="type" value="${escapeHtml(params.feedbackType)}" />
+    <input type="hidden" name="token" value="${escapeHtml(params.token || "")}" />
+  `;
+
+  return `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>AI-FU 피드백 저장 중</title>
+</head>
+<body style="margin:0;background:linear-gradient(135deg,#020617 0%,#0f172a 42%,#111827 100%);font-family:Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#111827;">
+  <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px 18px;">
+    <section style="width:100%;max-width:560px;background:#ffffff;border-radius:28px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,0.35);text-align:center;">
+      <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#2563eb;">AI-FU Feedback</p>
+      <h1 style="margin:0;font-size:26px;line-height:1.35;letter-spacing:-0.04em;color:#111827;">피드백을 저장하는 중입니다…</h1>
+      <p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#6b7280;">잠시만 기다려주세요. 자동으로 저장됩니다.</p>
+
+      <noscript>
+        <form method="POST" action="/api/feedback" style="margin-top:20px;">
+          ${noscriptInputs}
+          <button type="submit" style="width:100%;height:52px;border:none;border-radius:16px;background:#111827;color:#ffffff;font-size:16px;font-weight:900;cursor:pointer;">
+            피드백 저장하기
+          </button>
+        </form>
+      </noscript>
+    </section>
+  </main>
+  <script>
+    (function () {
+      try {
+        fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "text/html" },
+          body: ${JSON.stringify(payload)},
+        })
+          .then(function (res) { return res.text(); })
+          .then(function (html) {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .catch(function () {
+            document.body.innerHTML =
+              '<main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px 18px;font-family:Arial,sans-serif;"><section style="max-width:520px;background:#fff;border-radius:24px;padding:28px;text-align:center;"><h1 style="font-size:22px;margin:0 0 10px;">저장에 실패했습니다</h1><p style="color:#6b7280;">네트워크를 확인하고 메일의 버튼을 다시 눌러주세요.</p></section></main>';
+          });
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+// 피드백 저장 권한: 이메일에 담긴 서명 토큰이 (subscriber, item)과 일치해야 합니다.
+function isFeedbackAuthorized(params: {
+  subscriberId: string | null;
+  newsletterItemId: number | null;
+  token: string | null;
+}) {
+  return verifyFeedbackToken(
+    { subscriberId: params.subscriberId, itemId: params.newsletterItemId },
+    params.token
+  );
+}
+
 async function readRequestBody(request: NextRequest): Promise<RequestBody> {
   const contentType = request.headers.get("content-type") || "";
 
@@ -544,6 +645,7 @@ async function readRequestBody(request: NextRequest): Promise<RequestBody> {
       action_done: normalizeText(formData.get("action_done")),
       free_text: normalizeText(formData.get("free_text")),
       feedback_id: normalizeText(formData.get("feedback_id")),
+      token: normalizeText(formData.get("token")),
     };
   }
 
@@ -672,6 +774,8 @@ function getFeedbackParamsFromSearchParams(searchParams: URLSearchParams) {
 
   const feedbackId = parseNumberId(searchParams.get("feedback_id"));
 
+  const token = normalizeText(searchParams.get("token")) || null;
+
   return {
     subscriberId,
     subscriberEmail,
@@ -679,6 +783,7 @@ function getFeedbackParamsFromSearchParams(searchParams: URLSearchParams) {
     feedbackType,
     freeText,
     feedbackId,
+    token,
   };
 }
 
@@ -697,6 +802,8 @@ function getFeedbackParamsFromBody(body: RequestBody) {
 
   const feedbackId = parseNumberId(body.feedback_id);
 
+  const token = normalizeText(body.token) || null;
+
   return {
     subscriberId,
     subscriberEmail,
@@ -704,64 +811,43 @@ function getFeedbackParamsFromBody(body: RequestBody) {
     feedbackType,
     freeText,
     feedbackId,
+    token,
   };
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const {
-      subscriberId,
-      subscriberEmail,
-      newsletterItemId,
-      feedbackType,
-      freeText,
-      feedbackId,
-    } = getFeedbackParamsFromSearchParams(request.nextUrl.searchParams);
+    const { subscriberId, subscriberEmail, newsletterItemId, feedbackType, token } =
+      getFeedbackParamsFromSearchParams(request.nextUrl.searchParams);
 
     if (!feedbackType) {
-      const message = "올바른 feedback type이 필요합니다.";
-
-      return makeHtmlResponse(buildErrorHtmlPage(message), 400);
+      return makeHtmlResponse(
+        buildErrorHtmlPage("올바른 feedback type이 필요합니다."),
+        400
+      );
     }
 
-    const actionDone = getActionDoneValue({
-      feedbackType,
-    });
+    if (!isFeedbackAuthorized({ subscriberId, newsletterItemId, token })) {
+      return makeHtmlResponse(
+        buildErrorHtmlPage(
+          "유효하지 않거나 만료된 피드백 링크입니다. 받으신 최신 메일의 버튼을 다시 눌러주세요."
+        ),
+        401
+      );
+    }
 
-    let savedFeedbackId = feedbackId;
-
-    if (feedbackId && freeText) {
-      savedFeedbackId = await updateFeedbackFreeText({
-        feedbackId,
-        freeText,
-      });
-    } else {
-      savedFeedbackId = await saveFeedback({
+    // 프리페치/스캐너가 GET만으로 피드백을 저장하지 못하도록, 여기서는 쓰지 않고
+    // 브라우저 JS가 POST로 저장하게 유도합니다.
+    return makeHtmlResponse(
+      buildBridgeHtmlPage({
         subscriberId,
         subscriberEmail,
         newsletterItemId,
         feedbackType,
-        actionDone,
-        freeText,
-      });
-    }
-
-    const html = buildHtmlPage({
-      feedbackType,
-      feedbackId: savedFeedbackId,
-      subscriberId,
-      subscriberEmail,
-      newsletterItemId,
-      freeTextSaved: Boolean(freeText),
-    });
-
-    return new NextResponse(html, {
-      status: 200,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "x-feedback-id": savedFeedbackId ? String(savedFeedbackId) : "",
-      },
-    });
+        token,
+      }),
+      200
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown server error";
@@ -781,6 +867,7 @@ export async function POST(request: NextRequest) {
       feedbackType,
       freeText,
       feedbackId,
+      token,
     } = getFeedbackParamsFromBody(body);
 
     if (!feedbackType) {
@@ -797,6 +884,17 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    if (!isFeedbackAuthorized({ subscriberId, newsletterItemId, token })) {
+      const message =
+        "유효하지 않거나 만료된 피드백 링크입니다. 받으신 최신 메일의 버튼을 다시 눌러주세요.";
+
+      if (shouldReturnHtml(request)) {
+        return makeHtmlResponse(buildErrorHtmlPage(message), 401);
+      }
+
+      return NextResponse.json({ ok: false, message }, { status: 401 });
     }
 
     const actionDone = getActionDoneValue({
@@ -830,6 +928,7 @@ export async function POST(request: NextRequest) {
         subscriberEmail,
         newsletterItemId,
         freeTextSaved: Boolean(freeText),
+        token,
       });
 
       return new NextResponse(html, {

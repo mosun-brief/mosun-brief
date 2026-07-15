@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { feedbackToken } from "@/lib/linkTokens";
+import {
+  timingSafeEqualStr,
+  getClientIp,
+  isRateLimited,
+  recordFailure,
+  recordSuccess,
+} from "@/lib/adminAuth";
 
 type Subscriber = {
   id: string;
@@ -414,7 +422,10 @@ function generateAIFUNewsletter(
     subscriber.id
   }&email=${encodeURIComponent(subscriber.email)}&newsletter_item_id=${
     mainItem?.id || ""
-  }`;
+  }&token=${feedbackToken({
+    subscriberId: subscriber.id,
+    itemId: mainItem?.id ?? "",
+  })}`;
 
   const testNoticeHtml = isTest
     ? `
@@ -634,16 +645,28 @@ function getLatestFeedbackForSubscriber(
 
 export async function POST(request: NextRequest) {
   try {
-    const secretFromHeader = request.headers.get("x-admin-secret");
-    const secretFromQuery = request.nextUrl.searchParams.get("secret");
-    const secret = secretFromHeader || secretFromQuery;
+    const ip = getClientIp(request);
 
-    if (secret !== adminSecret) {
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요." },
+        { status: 429 }
+      );
+    }
+
+    // 시크릿은 헤더에서만 받습니다(쿼리스트링 제거).
+    const secret = (request.headers.get("x-admin-secret") || "").trim();
+
+    if (!secret || !timingSafeEqualStr(secret, adminSecret || "")) {
+      if (secret) recordFailure(ip);
+
       return NextResponse.json(
         { error: "관리자 인증에 실패했습니다." },
         { status: 401 }
       );
     }
+
+    recordSuccess(ip);
 
     const body = await request.json().catch(() => ({}));
     const testEmail = body.testEmail || request.nextUrl.searchParams.get("testEmail");

@@ -113,7 +113,7 @@ export default function BuildRequestsAdminPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedSecret = window.localStorage.getItem("aifu_admin_secret") || "";
+    const savedSecret = window.sessionStorage.getItem("aifu_admin_secret") || "";
     setAdminSecret(savedSecret);
 
     if (savedSecret) {
@@ -184,7 +184,7 @@ export default function BuildRequestsAdminPage() {
       return;
     }
 
-    window.localStorage.setItem("aifu_admin_secret", secret);
+    window.sessionStorage.setItem("aifu_admin_secret", secret);
     setMessage("ADMIN_SECRET이 저장되었습니다.");
     loadRequests(secret);
   }

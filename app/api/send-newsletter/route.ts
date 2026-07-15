@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { feedbackToken, unsubscribeToken } from "@/lib/linkTokens";
+import {
+  timingSafeEqualStr,
+  getClientIp,
+  isRateLimited,
+  recordFailure,
+  recordSuccess,
+} from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -189,21 +197,26 @@ async function readRequestBody(request: Request): Promise<RequestBody> {
 }
 
 function getAdminSecretFromRequest(request: Request, body: RequestBody) {
+  // 시크릿은 헤더 또는 본문에서만 받습니다. 쿼리스트링은 받지 않습니다.
   const headerSecret = request.headers.get("x-admin-secret");
 
   if (headerSecret) return headerSecret.trim();
 
   if (body.admin_secret) return String(body.admin_secret).trim();
 
-  const url = new URL(request.url);
-  const querySecret = url.searchParams.get("admin_secret");
-
-  if (querySecret) return querySecret.trim();
-
   return "";
 }
 
 function verifyAdminSecret(request: Request, body: RequestBody) {
+  const ip = getClientIp(request);
+
+  if (isRateLimited(ip)) {
+    return {
+      ok: false,
+      message: "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.",
+    };
+  }
+
   const serverSecret = process.env.ADMIN_SECRET;
 
   if (!serverSecret) {
@@ -222,13 +235,15 @@ function verifyAdminSecret(request: Request, body: RequestBody) {
     };
   }
 
-  if (requestSecret !== serverSecret) {
+  if (!timingSafeEqualStr(requestSecret, serverSecret)) {
+    recordFailure(ip);
     return {
       ok: false,
       message: "ADMIN_SECRET이 올바르지 않습니다.",
     };
   }
 
+  recordSuccess(ip);
   return {
     ok: true,
     message: "ok",
@@ -289,6 +304,7 @@ function getProfileUrl(subscriber: Subscriber) {
 function getUnsubscribeUrl(subscriber: Subscriber) {
   const params = new URLSearchParams();
   params.set("email", subscriber.email);
+  params.set("token", unsubscribeToken(subscriber.email));
 
   return `${getSiteUrl()}/unsubscribe?${params.toString()}`;
 }
@@ -900,6 +916,10 @@ function buildFeedbackUrl({
   params.set("email", subscriber.email);
   params.set("newsletter_item_id", String(item.id));
   params.set("type", type);
+  params.set(
+    "token",
+    feedbackToken({ subscriberId: subscriber.id, itemId: item.id })
+  );
 
   return `${siteUrl}/api/feedback?${params.toString()}`;
 }

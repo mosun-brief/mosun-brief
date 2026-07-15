@@ -44,6 +44,8 @@ function UnsubscribeContent() {
     setIsCompleted(false);
 
     try {
+      const token = searchParams.get("token") || "";
+
       const res = await fetch("/api/unsubscribe", {
         method: "POST",
         headers: {
@@ -51,6 +53,7 @@ function UnsubscribeContent() {
         },
         body: JSON.stringify({
           email: normalizedEmail,
+          token,
         }),
       });
 

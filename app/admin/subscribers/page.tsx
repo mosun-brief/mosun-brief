@@ -244,7 +244,7 @@ export default function AdminSubscribersPage() {
   >("all");
 
   useEffect(() => {
-    const savedSecret = window.localStorage.getItem("aifu_admin_secret") || "";
+    const savedSecret = window.sessionStorage.getItem("aifu_admin_secret") || "";
     setAdminSecret(savedSecret);
   }, []);
 
@@ -338,7 +338,7 @@ export default function AdminSubscribersPage() {
         return;
       }
 
-      window.localStorage.setItem("aifu_admin_secret", adminSecret.trim());
+      window.sessionStorage.setItem("aifu_admin_secret", adminSecret.trim());
       setStats(result);
       setMessage(result.message || "구독자 상태 데이터를 불러왔습니다.");
     } catch (error) {

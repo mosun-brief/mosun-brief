@@ -62,8 +62,13 @@ export default function FeedbackPage() {
 
     return {
       email: searchParams.get("email") || "",
-      itemId: searchParams.get("item_id") || "",
+      subscriberId: searchParams.get("subscriber_id") || "",
+      itemId:
+        searchParams.get("item_id") ||
+        searchParams.get("newsletter_item_id") ||
+        "",
       type: searchParams.get("type"),
+      token: searchParams.get("token") || "",
     };
   }, []);
 
@@ -84,10 +89,12 @@ export default function FeedbackPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            subscriber_id: params.subscriberId || null,
             subscriber_email: params.email,
             newsletter_item_id: params.itemId ? Number(params.itemId) : null,
             feedback_type: feedbackType,
             action_done: feedbackType === "action_done",
+            token: params.token || null,
           }),
         });
 
@@ -135,11 +142,13 @@ export default function FeedbackPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          subscriber_id: params.subscriberId || null,
           subscriber_email: params.email,
           newsletter_item_id: params.itemId ? Number(params.itemId) : null,
           feedback_type: feedbackType,
           action_done: feedbackType === "action_done",
           free_text: freeText.trim(),
+          token: params.token || null,
         }),
       });
 

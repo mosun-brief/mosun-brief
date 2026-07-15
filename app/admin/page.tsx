@@ -594,8 +594,8 @@ export default function AdminPage() {
   const hasSendResult = Boolean(sendResult);
 
   useEffect(() => {
-    const savedSecret = window.localStorage.getItem("aifu_admin_secret") || "";
-    const savedTestEmail = window.localStorage.getItem("aifu_test_email") || "";
+    const savedSecret = window.sessionStorage.getItem("aifu_admin_secret") || "";
+    const savedTestEmail = window.sessionStorage.getItem("aifu_test_email") || "";
 
     setAdminSecret(savedSecret);
     setTestEmail(savedTestEmail);
@@ -689,8 +689,8 @@ export default function AdminPage() {
       return;
     }
 
-    window.localStorage.setItem("aifu_admin_secret", adminSecret.trim());
-    window.localStorage.setItem("aifu_test_email", testEmail.trim());
+    window.sessionStorage.setItem("aifu_admin_secret", adminSecret.trim());
+    window.sessionStorage.setItem("aifu_test_email", testEmail.trim());
     setMessage("ADMIN_SECRET과 테스트 이메일이 저장되었습니다.");
     handleLoadStats(adminSecret.trim());
   }

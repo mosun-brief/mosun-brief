@@ -876,7 +876,7 @@ ${selectedTargetText}`;
       : "ready";
 
   useEffect(() => {
-    const savedSecret = window.localStorage.getItem("aifu_admin_secret") || "";
+    const savedSecret = window.sessionStorage.getItem("aifu_admin_secret") || "";
     setAdminSecret(savedSecret);
   }, []);
 
@@ -974,7 +974,7 @@ ${selectedTargetText}`;
       return;
     }
 
-    window.localStorage.setItem("aifu_admin_secret", adminSecret.trim());
+    window.sessionStorage.setItem("aifu_admin_secret", adminSecret.trim());
     setMessage("ADMIN_SECRET이 저장되었습니다.");
     loadItems(adminSecret.trim());
   }
