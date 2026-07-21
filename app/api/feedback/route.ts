@@ -815,6 +815,12 @@ function getFeedbackParamsFromBody(body: RequestBody) {
   };
 }
 
+// [레거시] 신규 발송 메일은 더 이상 이 GET 라우트를 링크하지 않습니다(→ /feedback
+// 페이지로 아이템당 링크 1개만 보냄, 실제 저장은 그 페이지의 JS onClick이
+// /api/feedback/state 로 fetch). 이 GET+브릿지 흐름은 과거에 발송된 메일에
+// 이미 박혀 있는 5버튼(type=... 쿼리) 링크들이 계속 동작하도록 남겨둔 것입니다.
+// 그 구형 링크들이 더 이상 열리지 않아도 되는 시점(발송 주기 기준 오래된 메일)에는
+// 이 GET 핸들러와 buildBridgeHtmlPage를 통째로 제거해도 됩니다.
 export async function GET(request: NextRequest) {
   try {
     const { subscriberId, subscriberEmail, newsletterItemId, feedbackType, token } =

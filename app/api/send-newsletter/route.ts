@@ -895,19 +895,15 @@ function buildSubscriberStatusText(
   return lines.join(" / ");
 }
 
-function buildFeedbackUrl({
+// 이메일에는 아이템당 피드백 링크 1개만 넣고, 실제 그룹 선택(만족도/실행 여부)은
+// /feedback 페이지(실제 웹앱, JS 상태 보유)에서 처리합니다. 토큰은 type과
+// 무관하게 (subscriber, item)에만 서명되어 있어 그대로 재사용할 수 있습니다.
+function buildFeedbackPageUrl({
   subscriber,
   item,
-  type,
 }: {
   subscriber: Subscriber;
   item: NewsletterItem;
-  type:
-    | "useful"
-    | "deeper"
-    | "not_relevant"
-    | "action_done"
-    | "action_not_done";
 }) {
   const siteUrl = getSiteUrl();
   const params = new URLSearchParams();
@@ -915,13 +911,12 @@ function buildFeedbackUrl({
   params.set("subscriber_id", subscriber.id);
   params.set("email", subscriber.email);
   params.set("newsletter_item_id", String(item.id));
-  params.set("type", type);
   params.set(
     "token",
     feedbackToken({ subscriberId: subscriber.id, itemId: item.id })
   );
 
-  return `${siteUrl}/api/feedback?${params.toString()}`;
+  return `${siteUrl}/feedback?${params.toString()}`;
 }
 
 function buildFeedbackButtons({
@@ -931,33 +926,7 @@ function buildFeedbackButtons({
   subscriber: Subscriber;
   item: NewsletterItem;
 }) {
-  const buttons = [
-    {
-      type: "useful" as const,
-      label: "좋음",
-      helper: "비슷한 자료를 더 받을게요",
-    },
-    {
-      type: "deeper" as const,
-      label: "더 깊게",
-      helper: "이 방향을 더 심화할게요",
-    },
-    {
-      type: "not_relevant" as const,
-      label: "별로",
-      helper: "다음 추천에서 낮출게요",
-    },
-    {
-      type: "action_done" as const,
-      label: "실행해봄",
-      helper: "실행 가능한 방향을 더 줄게요",
-    },
-    {
-      type: "action_not_done" as const,
-      label: "실행안해봄",
-      helper: "난이도와 시간을 다시 맞출게요",
-    },
-  ];
+  const url = escapeHtml(buildFeedbackPageUrl({ subscriber, item }));
 
   return `
     <div style="margin-top:18px;padding:16px;border-radius:14px;background:#f9fafb;border:1px solid #e5e7eb;">
@@ -965,30 +934,11 @@ function buildFeedbackButtons({
         이 버튼이 다음 브리프를 바꿉니다
       </p>
       <p style="margin:0 0 14px;font-size:13px;line-height:1.65;color:#6b7280;">
-        하나만 눌러도 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
+        자료 만족도와 실행 여부를 한 화면에서 눌러 남길 수 있어요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
       </p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        ${buttons
-          .map((button) => {
-            const url = escapeHtml(
-              buildFeedbackUrl({
-                subscriber,
-                item,
-                type: button.type,
-              })
-            );
-
-            return `
-              <a href="${url}" style="display:inline-block;padding:10px 12px;border-radius:14px;background:#ffffff;color:#111827;border:1px solid #d1d5db;font-size:13px;font-weight:800;text-decoration:none;">
-                ${escapeHtml(button.label)}
-                <span style="display:block;margin-top:3px;font-size:11px;font-weight:600;color:#6b7280;">
-                  ${escapeHtml(button.helper)}
-                </span>
-              </a>
-            `;
-          })
-          .join("")}
-      </div>
+      <a href="${url}" style="display:inline-block;padding:12px 16px;border-radius:14px;background:#111827;color:#ffffff;border:1px solid #111827;font-size:14px;font-weight:800;text-decoration:none;">
+        피드백 남기기
+      </a>
     </div>
   `;
 }
@@ -1238,7 +1188,7 @@ function buildNewsletterHtml({
             다음 브리프를 더 잘 맞추는 방법
           </p>
           <p style="margin:0;font-size:13px;line-height:1.75;color:#6b7280;">
-            각 자료 아래의 피드백 버튼을 하나만 눌러주세요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
+            각 자료 아래의 "피드백 남기기"를 눌러 만족도와 실행 여부를 남겨주세요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
           </p>
           <p style="margin:10px 0 0;font-size:13px;line-height:1.7;color:#9ca3af;">
             이 메일은 AI-FU MVP 테스트/운영 발송입니다.
