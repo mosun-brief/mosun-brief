@@ -1051,16 +1051,22 @@ function BriefingPreviewSection() {
 
             <section>
               <p className="brf-inner-title-plain" style={{ marginBottom: 4 }}>
-                이 버튼이 다음 브리핑을 바꿉니다
+                피드백 버튼 하나가 다음 브리핑을 바꿉니다
               </p>
               <p
                 className="brf-opt-desc"
                 style={{ marginTop: 0, marginBottom: 4 }}
               >
-                하나만 눌러도 다음 자료 선택, 난이도, Action hint 추천 점수에
-                반영됩니다.
+                “피드백 남기기”를 누르면 이동한 화면에서 자료 만족도와 실행
+                여부를 각각 하나씩 고를 수 있어요. 누르는 즉시 저장되고,
+                다시 누르면 선택이 풀립니다.
               </p>
 
+              <span className="brf-fake-btn brf-fake-btn-primary">
+                피드백 남기기
+              </span>
+
+              <p className="brf-feedback-group-label">자료가 어땠나요?</p>
               <div className="brf-feedback-grid">
                 <FeedbackPreviewButton title="좋음">
                   비슷한 자료를 더 받을래요
@@ -1071,6 +1077,10 @@ function BriefingPreviewSection() {
                 <FeedbackPreviewButton title="별로">
                   다음 추천에서 낮출게요
                 </FeedbackPreviewButton>
+              </div>
+
+              <p className="brf-feedback-group-label">실행해봤나요?</p>
+              <div className="brf-feedback-grid">
                 <FeedbackPreviewButton title="실행해봄">
                   실행 가능한 방향을 더 줄게요
                 </FeedbackPreviewButton>
