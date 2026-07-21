@@ -159,6 +159,9 @@ function MuseumFold() {
           />
         </div>
         <figcaption className="mh-plaque">
+          <span className="mh-plq-mobile">
+            창가의 젊은 남자, <span className="mh-plq-num">1876</span>
+          </span>
           <span className="mh-plq-title">「전망을 가진 사람」</span>
           <span className="mh-plq-credit">after Gustave Caillebotte · 《창가의 젊은 남자》 1876</span>
         </figcaption>
