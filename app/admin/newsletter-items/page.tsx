@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { CATEGORY_GROUPS as SHARED_CATEGORY_GROUPS } from "@/lib/categoryQuestions";
 import { DIFFICULTY_OPTIONS as SHARED_DIFFICULTY_OPTIONS } from "@/lib/categoryQuestions";
+import { ADMIN_GROUP_TITLES } from "@/lib/categoryQuestions";
 import type { CategoryGroupKey } from "@/lib/categoryQuestions";
 
 type CategoryGroup = {
@@ -71,12 +72,17 @@ type NewsletterItemsResponse = {
 // technical_difficulty, not_needed_yet, half_weekend)가 정식 값과 똑같은 한글
 // 라벨로 섞여 있어서, 관리자가 별칭을 고르면 그 아이템은 해당 축에서 어떤
 // 구독자와도 매칭되지 않는 문제가 있었다(2026-07-21 확인 결과 live 데이터에는
-// 다행히 0건). 단일 소스로 옮기면서 별칭은 전부 제거했다.
+// 다행히 0건). 단일 소스로 옮기면서 별칭은 전부 제거했다(=사용자가 체감하는
+// 유일한 의도된 변화). 그 외 라벨/구조는 원래 이 화면이 쓰던 그대로 유지한다.
+//
+// 축 제목은 lib.ADMIN_GROUP_TITLES를 쓴다: 구독자용 group.label과 글자가
+// 달라(예: "AI로 하고 싶은 것" vs "AI로 하고 싶은 거") 그대로 이어받으면
+// 이 화면이 원래 쓰던 문구가 미묘하게 달라 보인다.
 const FALLBACK_GROUPS: CategoryGroup[] = SHARED_CATEGORY_GROUPS.map(
   (group, index) => ({
     group_key: group.key,
-    label: group.label,
-    description: group.question,
+    label: ADMIN_GROUP_TITLES[group.key],
+    description: null,
     sort_order: index + 1,
     is_active: true,
   })

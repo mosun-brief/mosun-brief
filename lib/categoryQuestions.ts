@@ -184,6 +184,19 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
   },
 ];
 
+// 관리자 아이템 타겟팅 화면(app/admin/newsletter-items/page.tsx,
+// app/api/category-groups/route.ts)이 쓰던 원래 축 제목입니다. 위 그룹의
+// label(구독자용, 예: "AI로 하고 싶은 것")과 글자가 다릅니다(예: "AI로
+// 하고 싶은 거"). 관리자가 이미 손에 익은 등록 화면 문구를 그대로
+// 유지하기 위해 일부러 따로 둡니다 — 구독자용 label을 다듬더라도 이
+// 값은 별도 요청 없이는 바꾸지 않습니다.
+export const ADMIN_GROUP_TITLES: Record<CategoryGroupKey, string> = {
+  ai_emotion: "AI에 대한 감정",
+  ai_intent: "AI로 하고 싶은 거",
+  blocker: "지금 막히는 거",
+  action_time: "이번 주 가능한 행동 시간",
+};
+
 export type DifficultyValue = "easy" | "normal" | "expert";
 
 export type DifficultyOption = {
