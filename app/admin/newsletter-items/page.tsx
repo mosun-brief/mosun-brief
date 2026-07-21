@@ -72,11 +72,16 @@ type NewsletterItemsResponse = {
 // 라벨로 섞여 있어서, 관리자가 별칭을 고르면 그 아이템은 해당 축에서 어떤
 // 구독자와도 매칭되지 않는 문제가 있었다(2026-07-21 확인 결과 live 데이터에는
 // 다행히 0건). 단일 소스로 옮기면서 별칭은 전부 제거했다.
+//
+// label/description은 여기서 일부러 adminLabel/adminDescription을 씁니다.
+// 구독자용 label("호기심" = "나는 이렇다")과 관리자가 자료를 타겟팅할 때
+// 보는 라벨("호기심 단계" = "이 자료는 이런 사람에게 맞다")은 방향이 반대라
+// 그대로 재사용하면 어색합니다. value는 동일합니다.
 const FALLBACK_GROUPS: CategoryGroup[] = SHARED_CATEGORY_GROUPS.map(
   (group, index) => ({
     group_key: group.key,
-    label: group.label,
-    description: group.question,
+    label: group.adminLabel,
+    description: group.adminHelper,
     sort_order: index + 1,
     is_active: true,
   })
@@ -87,8 +92,8 @@ const FALLBACK_OPTIONS: CategoryOption[] = SHARED_CATEGORY_GROUPS.flatMap(
     group.options.map((option, index) => ({
       group_key: group.key,
       option_value: option.value,
-      label: option.label,
-      description: option.description,
+      label: option.adminLabel,
+      description: option.adminDescription,
       sort_order: index + 1,
       is_active: true,
     }))
@@ -1155,6 +1160,9 @@ ${selectedTargetText}`;
                 {bundles.map((bundle) => (
                   <div key={bundle.group.group_key} style={styles.targetBlock}>
                     <p style={styles.targetTitle}>{bundle.group.label}</p>
+                    {bundle.group.description && (
+                      <p style={styles.targetHelp}>{bundle.group.description}</p>
+                    )}
 
                     <div style={styles.chipWrap}>
                       {bundle.options.map((option) => {
@@ -1166,6 +1174,7 @@ ${selectedTargetText}`;
                           <button
                             key={`${option.group_key}-${option.option_value}`}
                             type="button"
+                            title={option.description || undefined}
                             style={{
                               ...styles.chip,
                               ...(selected ? styles.chipSelected : {}),
@@ -1944,10 +1953,16 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid #e5e7eb",
   },
   targetTitle: {
-    margin: "0 0 10px",
+    margin: "0 0 4px",
     fontSize: 14,
     fontWeight: 900,
     color: "#111827",
+  },
+  targetHelp: {
+    margin: "0 0 10px",
+    fontSize: 12,
+    lineHeight: 1.6,
+    color: "#6b7280",
   },
   chipWrap: {
     display: "flex",
