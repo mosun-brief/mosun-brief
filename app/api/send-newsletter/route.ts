@@ -919,6 +919,10 @@ function buildFeedbackPageUrl({
   return `${siteUrl}/feedback?${params.toString()}`;
 }
 
+// 원문 보기(주 행동, 채움 버튼)와 나란히 놓이므로 여기서는 카드/배경 없이
+// 아웃라인(보조) 버튼과 캡션만 반환합니다. 왼쪽 정렬은 호출부에서
+// 원문 보기와 같은 컨테이너에 넣어 맞춥니다. flex/grid 없이 block 요소만
+// 사용해 구형 메일 클라이언트에서도 그대로 쌓입니다.
 function buildFeedbackButtons({
   subscriber,
   item,
@@ -929,17 +933,12 @@ function buildFeedbackButtons({
   const url = escapeHtml(buildFeedbackPageUrl({ subscriber, item }));
 
   return `
-    <div style="margin-top:18px;padding:16px;border-radius:14px;background:#f9fafb;border:1px solid #e5e7eb;">
-      <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#111827;">
-        이 버튼이 다음 브리프를 바꿉니다
-      </p>
-      <p style="margin:0 0 14px;font-size:13px;line-height:1.65;color:#6b7280;">
-        자료 만족도와 실행 여부를 한 화면에서 눌러 남길 수 있어요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
-      </p>
-      <a href="${url}" style="display:inline-block;padding:12px 16px;border-radius:14px;background:#111827;color:#ffffff;border:1px solid #111827;font-size:14px;font-weight:800;text-decoration:none;">
-        피드백 남기기
-      </a>
-    </div>
+    <a href="${url}" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#ffffff;color:#111827;border:1.5px solid #111827;text-decoration:none;font-size:14px;font-weight:800;">
+      피드백 남기기
+    </a>
+    <p style="margin:8px 0 0;font-size:12px;line-height:1.6;color:#9ca3af;">
+      자료 만족도와 실행 여부를 한 화면에서 남길 수 있어요 · 다음 추천에 반영돼요
+    </p>
   `;
 }
 
@@ -1120,19 +1119,20 @@ function buildNewsletterHtml({
             </p>
           </div>
 
-          ${
-            safeSourceUrl
-              ? `
-                <div style="margin-top:18px;">
-                  <a href="${safeSourceUrl}" style="display:inline-block;padding:11px 15px;border-radius:12px;background:#111827;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;">
+          <div style="margin-top:18px;">
+            ${
+              safeSourceUrl
+                ? `
+                  <a href="${safeSourceUrl}" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#111827;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">
                     원문 보기
                   </a>
-                </div>
-              `
-              : ""
-          }
-
-          ${feedbackButtons}
+                  <div style="margin-top:10px;">
+                    ${feedbackButtons}
+                  </div>
+                `
+                : feedbackButtons
+            }
+          </div>
         </div>
       `;
     })

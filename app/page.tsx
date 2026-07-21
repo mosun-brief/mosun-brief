@@ -1047,24 +1047,29 @@ function BriefingPreviewSection() {
               </p>
             </section>
 
-            <span className="brf-fake-btn">원문 보기</span>
+            <span className="brf-fake-btn brf-fake-btn-primary">
+              원문 보기
+            </span>
+
+            <div className="brf-feedback-secondary">
+              <span className="brf-fake-btn">피드백 남기기</span>
+              <p className="brf-feedback-caption">
+                자료 만족도와 실행 여부를 한 화면에서 남길 수 있어요 · 다음
+                추천에 반영돼요
+              </p>
+            </div>
 
             <section>
               <p className="brf-inner-title-plain" style={{ marginBottom: 4 }}>
-                피드백 버튼 하나가 다음 브리핑을 바꿉니다
+                “피드백 남기기”를 누르면 이런 화면이 열려요
               </p>
               <p
                 className="brf-opt-desc"
-                style={{ marginTop: 0, marginBottom: 4 }}
+                style={{ marginTop: 0, marginBottom: 12 }}
               >
-                “피드백 남기기”를 누르면 이동한 화면에서 자료 만족도와 실행
-                여부를 각각 하나씩 고를 수 있어요. 누르는 즉시 저장되고,
-                다시 누르면 선택이 풀립니다.
+                자료 만족도와 실행 여부를 각각 하나씩 고를 수 있어요. 누르는
+                즉시 저장되고, 다시 누르면 선택이 풀립니다.
               </p>
-
-              <span className="brf-fake-btn brf-fake-btn-primary">
-                피드백 남기기
-              </span>
 
               <p className="brf-feedback-group-label">자료가 어땠나요?</p>
               <div className="brf-feedback-grid">
