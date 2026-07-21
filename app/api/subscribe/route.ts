@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_DIFFICULTY,
+  getPersonaType,
+  isValidCategoryValue,
+  isValidDifficulty,
+} from "@/lib/categoryQuestions";
+import type { CategoryGroupKey } from "@/lib/categoryQuestions";
 
 export const dynamic = "force-dynamic";
-
-type CategoryGroupKey =
-  | "ai_emotion"
-  | "ai_intent"
-  | "blocker"
-  | "action_time";
 
 type SubscribeRequestBody = {
   email?: string;
@@ -18,41 +19,6 @@ type SubscribeRequestBody = {
   blocker?: string;
   action_time?: string;
 };
-
-const VALID_AI_EMOTIONS = [
-  "curious",
-  "excited",
-  "anxious",
-  "fatigue",
-  "skeptical",
-  "unsure",
-];
-
-const VALID_AI_INTENTS = [
-  "not_sure",
-  "work_efficiency",
-  "service_building",
-  "learning",
-  "creative_writing",
-  "business_opportunity",
-  "avoid_but_need",
-];
-
-const VALID_BLOCKERS = [
-  "too_much_info",
-  "no_clear_start",
-  "too_technical",
-  "no_time",
-  "fear_of_falling_behind",
-  "low_need",
-];
-
-const VALID_ACTION_TIMES = [
-  "10min",
-  "30min",
-  "2hours",
-  "half_day_weekend",
-];
 
 function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,33 +44,6 @@ function normalizeText(value: unknown) {
   return value.trim();
 }
 
-function getPersonaType({
-  aiEmotion,
-  aiIntent,
-}: {
-  aiEmotion: string;
-  aiIntent: string;
-}) {
-  if (aiIntent === "service_building" && aiEmotion === "anxious") {
-    return "Builder-Anxious";
-  }
-
-  if (aiIntent === "service_building") return "Builder";
-  if (aiIntent === "work_efficiency") return "Adopter";
-  if (aiEmotion === "anxious") return "Anxious";
-  if (aiEmotion === "skeptical") return "Skeptic";
-  if (aiEmotion === "fatigue") return "Avoider";
-  if (aiEmotion === "curious") return "Explorer";
-  if (aiEmotion === "excited") return "Optimist";
-  if (aiEmotion === "unsure") return "Unclear";
-
-  return "AI-FU Subscriber";
-}
-
-function isValidSelection(value: string, validValues: string[]) {
-  return validValues.includes(value);
-}
-
 async function readBody(request: Request): Promise<SubscribeRequestBody> {
   try {
     const body = await request.json();
@@ -120,7 +59,7 @@ export async function POST(request: Request) {
 
     const email = normalizeText(body.email).toLowerCase();
     const jobRole = normalizeText(body.job_role);
-    const difficulty = normalizeText(body.difficulty) || "easy";
+    const difficulty = normalizeText(body.difficulty) || DEFAULT_DIFFICULTY;
 
     const aiEmotion = normalizeText(body.ai_emotion) || "curious";
     const aiIntent = normalizeText(body.ai_intent) || "not_sure";
@@ -137,7 +76,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidSelection(aiEmotion, VALID_AI_EMOTIONS)) {
+    if (!isValidCategoryValue("ai_emotion", aiEmotion)) {
       return NextResponse.json(
         {
           ok: false,
@@ -147,7 +86,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidSelection(aiIntent, VALID_AI_INTENTS)) {
+    if (!isValidCategoryValue("ai_intent", aiIntent)) {
       return NextResponse.json(
         {
           ok: false,
@@ -157,7 +96,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidSelection(blocker, VALID_BLOCKERS)) {
+    if (!isValidCategoryValue("blocker", blocker)) {
       return NextResponse.json(
         {
           ok: false,
@@ -167,11 +106,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidSelection(actionTime, VALID_ACTION_TIMES)) {
+    if (!isValidCategoryValue("action_time", actionTime)) {
       return NextResponse.json(
         {
           ok: false,
           message: "행동 시간 선택값이 올바르지 않습니다.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidDifficulty(difficulty)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "난이도 선택값이 올바르지 않습니다.",
         },
         { status: 400 }
       );

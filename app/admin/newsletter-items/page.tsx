@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-
-type CategoryGroupKey = "ai_emotion" | "ai_intent" | "blocker" | "action_time";
+import { CATEGORY_GROUPS as SHARED_CATEGORY_GROUPS } from "@/lib/categoryQuestions";
+import { DIFFICULTY_OPTIONS as SHARED_DIFFICULTY_OPTIONS } from "@/lib/categoryQuestions";
+import type { CategoryGroupKey } from "@/lib/categoryQuestions";
 
 type CategoryGroup = {
   id?: number;
@@ -65,271 +66,33 @@ type NewsletterItemsResponse = {
   rawText?: string;
 };
 
-const FALLBACK_GROUPS: CategoryGroup[] = [
-  {
-    group_key: "ai_emotion",
-    label: "AI에 대한 감정",
-    description: "AI를 볼 때 지금 가장 가까운 감정",
-    sort_order: 1,
+// lib/categoryQuestions.ts에서 파생. 예전에는 이 상수가 직접 하드코딩돼 있었고
+// 그 안에 레거시 별칭 6개(writing_creation, business_money, dont_know_what_to_do,
+// technical_difficulty, not_needed_yet, half_weekend)가 정식 값과 똑같은 한글
+// 라벨로 섞여 있어서, 관리자가 별칭을 고르면 그 아이템은 해당 축에서 어떤
+// 구독자와도 매칭되지 않는 문제가 있었다(2026-07-21 확인 결과 live 데이터에는
+// 다행히 0건). 단일 소스로 옮기면서 별칭은 전부 제거했다.
+const FALLBACK_GROUPS: CategoryGroup[] = SHARED_CATEGORY_GROUPS.map(
+  (group, index) => ({
+    group_key: group.key,
+    label: group.label,
+    description: group.question,
+    sort_order: index + 1,
     is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    label: "AI로 하고 싶은 거",
-    description: "AI를 통해 얻고 싶은 목적",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    label: "지금 막히는 거",
-    description: "AI 활용을 시작하지 못하게 하는 이유",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    label: "이번 주 가능한 행동 시간",
-    description: "이번 주에 실제로 쓸 수 있는 시간",
-    sort_order: 4,
-    is_active: true,
-  },
-];
+  })
+);
 
-const FALLBACK_OPTIONS: CategoryOption[] = [
-  {
-    group_key: "ai_emotion",
-    option_value: "curious",
-    label: "호기심",
-    description: null,
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "excited",
-    label: "기대됨",
-    description: null,
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "anxious",
-    label: "불안",
-    description: null,
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "fatigue",
-    label: "정보가 너무 많아 피곤",
-    description: null,
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "skeptical",
-    label: "회의적",
-    description: null,
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "unsure",
-    label: "잘 모르겠음",
-    description: null,
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "not_sure",
-    label: "아직 모름",
-    description: null,
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "work_efficiency",
-    label: "업무 효율 높이기",
-    description: null,
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "service_building",
-    label: "서비스나 사이트 만들기",
-    description: null,
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "learning",
-    label: "공부나 자기계발",
-    description: null,
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "creative_writing",
-    label: "글쓰기/창작",
-    description: null,
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "writing_creation",
-    label: "글쓰기/창작",
-    description: null,
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "business_opportunity",
-    label: "사업 기회나 돈 벌 기회",
-    description: null,
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "business_money",
-    label: "사업 기회나 돈 벌 기회",
-    description: null,
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "avoid_but_need",
-    label: "피하고 싶으나 알아야겠음",
-    description: null,
-    sort_order: 7,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "too_much_info",
-    label: "정보가 너무 많아 정리가 안됨",
-    description: null,
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_clear_start",
-    label: "뭘 해야할 지 모르겠음",
-    description: null,
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "dont_know_what_to_do",
-    label: "뭘 해야할 지 모르겠음",
-    description: null,
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "too_technical",
-    label: "기술적인 내용이 어려움",
-    description: null,
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "technical_difficulty",
-    label: "기술적인 내용이 어려움",
-    description: null,
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_time",
-    label: "시간 없음",
-    description: null,
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "fear_of_falling_behind",
-    label: "뒤처질까봐 불안",
-    description: null,
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "low_need",
-    label: "아직 필요성을 모르겠음",
-    description: null,
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "not_needed_yet",
-    label: "아직 필요성을 모르겠음",
-    description: null,
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "10min",
-    label: "10분",
-    description: null,
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "30min",
-    label: "30분",
-    description: null,
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "2hours",
-    label: "2시간",
-    description: null,
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "half_day_weekend",
-    label: "주말 반나절",
-    description: null,
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "half_weekend",
-    label: "주말 반나절",
-    description: null,
-    sort_order: 4,
-    is_active: true,
-  },
-];
+const FALLBACK_OPTIONS: CategoryOption[] = SHARED_CATEGORY_GROUPS.flatMap(
+  (group) =>
+    group.options.map((option, index) => ({
+      group_key: group.key,
+      option_value: option.value,
+      label: option.label,
+      description: option.description,
+      sort_order: index + 1,
+      is_active: true,
+    }))
+);
 
 const CATEGORY_OPTIONS = [
   { value: "general_ai", label: "전반적인 AI" },
@@ -342,11 +105,7 @@ const CATEGORY_OPTIONS = [
   { value: "ethics", label: "윤리/리스크" },
 ];
 
-const DIFFICULTY_OPTIONS = [
-  { value: "easy", label: "입문" },
-  { value: "normal", label: "중간" },
-  { value: "expert", label: "심화" },
-];
+const DIFFICULTY_OPTIONS = SHARED_DIFFICULTY_OPTIONS;
 
 const SOURCE_TYPE_OPTIONS = [
   { value: "main", label: "메인" },

@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
+import {
+  CATEGORY_GROUPS,
+  DEFAULT_CATEGORY_SELECTIONS,
+  DEFAULT_DIFFICULTY,
+  DIFFICULTY_OPTIONS,
+  getCategoryOptionLabel,
+  getDifficultyLabel,
+} from "@/lib/categoryQuestions";
+import type { CategoryGroupKey } from "@/lib/categoryQuestions";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -15,35 +23,40 @@ const notoSerifKr = Noto_Serif_KR({
   weight: ["500", "600", "700", "900"],
 });
 
-type CategoryGroupKey =
-  | "ai_emotion"
-  | "ai_intent"
-  | "blocker"
-  | "action_time";
-
-type CategoryGroup = {
-  id?: number;
-  group_key: CategoryGroupKey;
-  label: string;
-  description: string | null;
-  sort_order: number;
-  is_active: boolean;
-};
-
-type CategoryOption = {
-  id?: number;
-  group_key: CategoryGroupKey;
-  option_value: string;
-  label: string;
-  description: string | null;
-  sort_order: number;
-  is_active: boolean;
-};
-
+// lib/categoryQuestions.ts의 문항 형태를 이 페이지의 카드 렌더링(QuestionBlock)이
+// 기대하는 group/options 번들 모양으로 맞춰주기만 하는 어댑터입니다. 렌더링
+// 컴포넌트 자체는 손대지 않아서 위험을 최소화했습니다.
 type CategoryBundle = {
-  group: CategoryGroup;
-  options: CategoryOption[];
+  group: {
+    group_key: CategoryGroupKey;
+    label: string;
+    description: string;
+    step: string;
+    helper: string;
+  };
+  options: {
+    group_key: CategoryGroupKey;
+    option_value: string;
+    label: string;
+    description: string;
+  }[];
 };
+
+const BUNDLES: CategoryBundle[] = CATEGORY_GROUPS.map((group) => ({
+  group: {
+    group_key: group.key,
+    label: group.label,
+    description: group.question,
+    step: group.step,
+    helper: group.helper,
+  },
+  options: group.options.map((option) => ({
+    group_key: group.key,
+    option_value: option.value,
+    label: option.label,
+    description: option.description,
+  })),
+}));
 
 type SelectedSummary = {
   aiEmotion: string;
@@ -61,268 +74,12 @@ type ApiResult = {
   rawText?: string;
 };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-const FALLBACK_GROUPS: CategoryGroup[] = [
-  {
-    group_key: "ai_emotion",
-    label: "AI에 대한 감정",
-    description: "AI를 볼 때 지금 가장 가까운 감정을 골라주세요.",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    label: "AI로 하고 싶은 것",
-    description: "AI를 통해 가장 먼저 얻고 싶은 방향을 골라주세요.",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    label: "지금 막히는 지점",
-    description: "AI를 시작하지 못하게 만드는 가장 큰 이유를 골라주세요.",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    label: "이번 주 가능한 행동 시간",
-    description: "이번 주에 실제로 써볼 수 있는 시간을 골라주세요.",
-    sort_order: 4,
-    is_active: true,
-  },
-];
-
-const FALLBACK_OPTIONS: CategoryOption[] = [
-  {
-    group_key: "ai_emotion",
-    option_value: "curious",
-    label: "호기심",
-    description: "AI가 무엇을 가능하게 하는지 궁금해요.",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "excited",
-    label: "기대됨",
-    description: "AI가 내 일이나 삶에 도움이 될 것 같아요.",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "anxious",
-    label: "불안",
-    description: "뒤처지거나 대체될까 봐 불안해요.",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "fatigue",
-    label: "정보가 너무 많아 피곤",
-    description: "볼 것은 많은데 정리가 안 돼요.",
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "skeptical",
-    label: "회의적",
-    description: "AI가 과장된 것 같고 실제 효과가 궁금해요.",
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "unsure",
-    label: "잘 모르겠음",
-    description: "좋은 건지 위험한 건지 아직 판단이 안 돼요.",
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "not_sure",
-    label: "아직 모름",
-    description: "AI로 뭘 할 수 있는지부터 알고 싶어요.",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "work_efficiency",
-    label: "업무 효율 높이기",
-    description: "문서, 정리, 검색, 반복 업무에 쓰고 싶어요.",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "service_building",
-    label: "서비스나 사이트 만들기",
-    description: "웹사이트, 서비스, 자동화 도구를 만들고 싶어요.",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "learning",
-    label: "공부나 자기계발",
-    description: "학습, 시험 준비, 지식 습득에 쓰고 싶어요.",
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "creative_writing",
-    label: "글쓰기/창작",
-    description: "글, 콘텐츠, 기획, 이미지 작업에 쓰고 싶어요.",
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "business_opportunity",
-    label: "사업 기회나 돈 벌 기회",
-    description: "수익화, 부업, 사업 아이디어를 찾고 싶어요.",
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "avoid_but_need",
-    label: "피하고 싶으나 알아야겠음",
-    description: "적극적으로 쓰고 싶진 않지만 변화는 따라가야 할 것 같아요.",
-    sort_order: 7,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "too_much_info",
-    label: "정보가 너무 많아 정리가 안됨",
-    description: "무엇이 중요한지 고르기 어려워요.",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_clear_start",
-    label: "뭘 해야할 지 모르겠음",
-    description: "첫 행동을 정하지 못하고 있어요.",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "too_technical",
-    label: "기술적인 내용이 어려움",
-    description: "용어, 개발, 모델 설명이 부담스러워요.",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_time",
-    label: "시간 없음",
-    description: "관심은 있지만 실제로 해볼 시간이 부족해요.",
-    sort_order: 4,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "fear_of_falling_behind",
-    label: "뒤처질까봐 불안",
-    description: "AI 변화 속도에 비해 내가 늦는 느낌이에요.",
-    sort_order: 5,
-    is_active: true,
-  },
-  {
-    group_key: "blocker",
-    option_value: "low_need",
-    label: "아직 필요성을 모르겠음",
-    description: "왜 써야 하는지 아직 납득이 안 돼요.",
-    sort_order: 6,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "10min",
-    label: "10분",
-    description: "짧게 읽고 바로 하나만 해볼 수 있어요.",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "30min",
-    label: "30분",
-    description: "짧은 튜토리얼이나 간단한 적용이 가능해요.",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "2hours",
-    label: "2시간",
-    description: "작은 산출물이나 미니 실습이 가능해요.",
-    sort_order: 3,
-    is_active: true,
-  },
-  {
-    group_key: "action_time",
-    option_value: "half_day_weekend",
-    label: "주말 반나절",
-    description: "주말에 미니 프로젝트나 깊은 작업이 가능해요.",
-    sort_order: 4,
-    is_active: true,
-  },
-];
-
-const DEFAULT_SELECTIONS: Record<CategoryGroupKey, string> = {
-  ai_emotion: "fatigue",
-  ai_intent: "not_sure",
-  blocker: "too_much_info",
-  action_time: "30min",
-};
-
-const GROUP_STEP_LABELS: Record<CategoryGroupKey, string> = {
-  ai_emotion: "01",
-  ai_intent: "02",
-  blocker: "03",
-  action_time: "04",
-};
-
-const GROUP_HELP_TEXTS: Record<CategoryGroupKey, string> = {
-  ai_emotion: "정답은 없습니다. 지금 가장 가까운 느낌 하나만 고르면 됩니다.",
-  ai_intent: "목표가 뚜렷하지 않아도 괜찮습니다. ‘아직 모름’도 중요한 신호입니다.",
-  blocker: "이 막힘을 기준으로 자료와 실행 단계를 줄입니다.",
-  action_time: "선택한 시간 안에 끝낼 수 있는 행동 제안을 함께 보냅니다.",
-};
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
-}
-
-function buildBundles(groups: CategoryGroup[], options: CategoryOption[]) {
-  return groups
-    .filter((group) => group.is_active)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((group) => ({
-      group,
-      options: options
-        .filter(
-          (option) => option.is_active && option.group_key === group.group_key
-        )
-        .sort((a, b) => a.sort_order - b.sort_order),
-    }));
 }
 
 async function readJsonResponse(response: Response): Promise<ApiResult> {
@@ -344,19 +101,6 @@ async function readJsonResponse(response: Response): Promise<ApiResult> {
       rawText: text.slice(0, 1000),
     };
   }
-}
-
-function findSelectedLabel(
-  options: CategoryOption[],
-  groupKey: CategoryGroupKey,
-  value: string
-) {
-  return (
-    options.find(
-      (option) =>
-        option.group_key === groupKey && option.option_value === value
-    )?.label || value
-  );
 }
 
 /* 심전도 마크 — 접속 시 한 번 그려지는 브랜드 모션 */
@@ -433,90 +177,27 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [jobRole, setJobRole] = useState("");
-  const [difficulty, setDifficulty] = useState("easy");
+  const [difficulty, setDifficulty] = useState<string>(DEFAULT_DIFFICULTY);
 
-  const [groups, setGroups] = useState<CategoryGroup[]>(FALLBACK_GROUPS);
-  const [options, setOptions] = useState<CategoryOption[]>(FALLBACK_OPTIONS);
+  const [selections, setSelections] = useState<Record<CategoryGroupKey, string>>(
+    DEFAULT_CATEGORY_SELECTIONS
+  );
 
-  const [selections, setSelections] =
-    useState<Record<CategoryGroupKey, string>>(DEFAULT_SELECTIONS);
-
-  const [loadingCategories, setLoadingCategories] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const bundles = useMemo(() => buildBundles(groups, options), [groups, options]);
+  const bundles = BUNDLES;
 
   const selectedSummary = useMemo(
     () => ({
-      aiEmotion: findSelectedLabel(options, "ai_emotion", selections.ai_emotion),
-      aiIntent: findSelectedLabel(options, "ai_intent", selections.ai_intent),
-      blocker: findSelectedLabel(options, "blocker", selections.blocker),
-      actionTime: findSelectedLabel(
-        options,
-        "action_time",
-        selections.action_time
-      ),
+      aiEmotion: getCategoryOptionLabel("ai_emotion", selections.ai_emotion),
+      aiIntent: getCategoryOptionLabel("ai_intent", selections.ai_intent),
+      blocker: getCategoryOptionLabel("blocker", selections.blocker),
+      actionTime: getCategoryOptionLabel("action_time", selections.action_time),
     }),
-    [options, selections]
+    [selections]
   );
-
-  useEffect(() => {
-    async function loadCategories() {
-      setLoadingCategories(true);
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        setGroups(FALLBACK_GROUPS);
-        setOptions(FALLBACK_OPTIONS);
-        setLoadingCategories(false);
-        return;
-      }
-
-      try {
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-        const [
-          { data: groupData, error: groupError },
-          { data: optionData, error: optionError },
-        ] = await Promise.all([
-          supabase
-            .from("subscriber_category_groups")
-            .select("id, group_key, label, description, sort_order, is_active")
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true }),
-          supabase
-            .from("subscriber_category_options")
-            .select(
-              "id, group_key, option_value, label, description, sort_order, is_active"
-            )
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true }),
-        ]);
-
-        if (groupError || optionError) {
-          setGroups(FALLBACK_GROUPS);
-          setOptions(FALLBACK_OPTIONS);
-          return;
-        }
-
-        if (groupData && groupData.length > 0) {
-          setGroups(groupData as CategoryGroup[]);
-        }
-
-        if (optionData && optionData.length > 0) {
-          setOptions(optionData as CategoryOption[]);
-        }
-      } catch {
-        setGroups(FALLBACK_GROUPS);
-        setOptions(FALLBACK_OPTIONS);
-      } finally {
-        setLoadingCategories(false);
-      }
-    }
-
-    loadCategories();
-  }, []);
 
   function handleSelect(groupKey: CategoryGroupKey, optionValue: string) {
     setSelections((prev) => ({
@@ -719,19 +400,14 @@ export default function HomePage() {
                           value={difficulty}
                           onChange={(event) => setDifficulty(event.target.value)}
                         >
-                          <option value="easy">입문</option>
-                          <option value="normal">중간</option>
-                          <option value="expert">심화</option>
+                          {DIFFICULTY_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                       </label>
                     </div>
-
-                    {loadingCategories && (
-                      <p className="brf-loading">
-                        진단 항목을 불러오는 중입니다. 불러오기에 실패하면 기본
-                        항목으로 진행됩니다.
-                      </p>
-                    )}
 
                     <div>
                       {bundles.map((bundle) => (
@@ -832,8 +508,7 @@ function SuccessOnboarding({
   difficulty: string;
   onReset: () => void;
 }) {
-  const difficultyLabel =
-    difficulty === "expert" ? "심화" : difficulty === "normal" ? "중간" : "입문";
+  const difficultyLabel = getDifficultyLabel(difficulty);
 
   return (
     <section>
@@ -937,18 +612,16 @@ function QuestionBlock({
   selectedValue: string;
   onSelect: (groupKey: CategoryGroupKey, optionValue: string) => void;
 }) {
-  const groupKey = bundle.group.group_key;
-
   return (
     <section className="brf-q">
       <div className="brf-q-head">
-        <div className="brf-q-step">{GROUP_STEP_LABELS[groupKey]}</div>
+        <div className="brf-q-step">{bundle.group.step}</div>
         <div>
           <h3 className="brf-q-title">{bundle.group.label}</h3>
           {bundle.group.description && (
             <p className="brf-q-desc">{bundle.group.description}</p>
           )}
-          <p className="brf-q-help">{GROUP_HELP_TEXTS[groupKey]}</p>
+          <p className="brf-q-help">{bundle.group.helper}</p>
         </div>
       </div>
 

@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-
-type CategoryGroupKey =
-  | "ai_emotion"
-  | "ai_intent"
-  | "blocker"
-  | "action_time";
+import {
+  CATEGORY_GROUPS as SHARED_CATEGORY_GROUPS,
+  DEFAULT_CATEGORY_SELECTIONS,
+  DEFAULT_DIFFICULTY,
+  DIFFICULTY_OPTIONS,
+  getCategoryOptionLabel,
+  getDifficultyLabel,
+} from "@/lib/categoryQuestions";
+import type { CategoryGroupKey } from "@/lib/categoryQuestions";
 
 type CategoryOption = {
   group_key: CategoryGroupKey;
@@ -22,190 +25,27 @@ const CATEGORY_GROUPS: {
   group_key: CategoryGroupKey;
   label: string;
   description: string;
+  helper: string;
   step: string;
-}[] = [
-  {
-    group_key: "ai_emotion",
-    label: "AI에 대한 감정",
-    description: "요즘 AI를 볼 때 가장 가까운 감정은 무엇인가요?",
-    step: "01",
-  },
-  {
-    group_key: "ai_intent",
-    label: "AI로 하고 싶은 것",
-    description: "지금 AI로 가장 먼저 해보고 싶은 것은 무엇인가요?",
-    step: "02",
-  },
-  {
-    group_key: "blocker",
-    label: "지금 막히는 지점",
-    description: "AI를 실제로 쓰지 못하게 만드는 가장 큰 이유는 무엇인가요?",
-    step: "03",
-  },
-  {
-    group_key: "action_time",
-    label: "이번 주 가능한 행동 시간",
-    description: "이번 주에 실제로 AI를 써볼 수 있는 시간은 어느 정도인가요?",
-    step: "04",
-  },
-];
+}[] = SHARED_CATEGORY_GROUPS.map((group) => ({
+  group_key: group.key,
+  label: group.label,
+  description: group.question,
+  helper: group.helper,
+  step: group.step,
+}));
 
-const CATEGORY_OPTIONS: CategoryOption[] = [
-  {
-    group_key: "ai_emotion",
-    option_value: "curious",
-    label: "호기심",
-    description: "AI가 무엇을 가능하게 하는지 궁금해요.",
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "excited",
-    label: "기대됨",
-    description: "AI가 내 일이나 삶에 도움이 될 것 같아요.",
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "anxious",
-    label: "불안",
-    description: "뒤처지거나 대체될까 봐 불안해요.",
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "fatigue",
-    label: "정보가 너무 많아 피곤",
-    description: "볼 것은 많은데 정리가 안 돼요.",
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "skeptical",
-    label: "회의적",
-    description: "AI가 과장된 것 같고 실제 효과가 궁금해요.",
-  },
-  {
-    group_key: "ai_emotion",
-    option_value: "unsure",
-    label: "잘 모르겠음",
-    description: "좋은 건지 위험한 건지 아직 판단이 안 돼요.",
-  },
+const CATEGORY_OPTIONS: CategoryOption[] = SHARED_CATEGORY_GROUPS.flatMap(
+  (group) =>
+    group.options.map((option) => ({
+      group_key: group.key,
+      option_value: option.value,
+      label: option.label,
+      description: option.description,
+    }))
+);
 
-  {
-    group_key: "ai_intent",
-    option_value: "not_sure",
-    label: "아직 모름",
-    description: "AI로 뭘 할 수 있는지부터 알고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "work_efficiency",
-    label: "업무 효율 높이기",
-    description: "문서, 정리, 검색, 반복 업무에 쓰고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "service_building",
-    label: "서비스나 사이트 만들기",
-    description: "웹사이트, 서비스, 자동화 도구를 만들고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "learning",
-    label: "공부나 자기계발",
-    description: "학습, 시험 준비, 지식 습득에 쓰고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "creative_writing",
-    label: "글쓰기/창작",
-    description: "글, 콘텐츠, 기획, 이미지 작업에 쓰고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "business_opportunity",
-    label: "사업 기회나 돈 벌 기회",
-    description: "수익화, 부업, 사업 아이디어를 찾고 싶어요.",
-  },
-  {
-    group_key: "ai_intent",
-    option_value: "avoid_but_need",
-    label: "피하고 싶으나 알아야겠음",
-    description: "적극적으로 쓰고 싶진 않지만 변화는 따라가야 할 것 같아요.",
-  },
-
-  {
-    group_key: "blocker",
-    option_value: "too_much_info",
-    label: "정보가 너무 많아 정리가 안됨",
-    description: "무엇이 중요한지 고르기 어려워요.",
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_clear_start",
-    label: "뭘 해야할 지 모르겠음",
-    description: "첫 행동을 정하지 못하고 있어요.",
-  },
-  {
-    group_key: "blocker",
-    option_value: "too_technical",
-    label: "기술적인 내용이 어려움",
-    description: "용어, 개발, 모델 설명이 부담스러워요.",
-  },
-  {
-    group_key: "blocker",
-    option_value: "no_time",
-    label: "시간 없음",
-    description: "관심은 있지만 실제로 해볼 시간이 부족해요.",
-  },
-  {
-    group_key: "blocker",
-    option_value: "fear_of_falling_behind",
-    label: "뒤처질까봐 불안",
-    description: "AI 변화 속도에 비해 내가 늦는 느낌이에요.",
-  },
-  {
-    group_key: "blocker",
-    option_value: "low_need",
-    label: "아직 필요성을 모르겠음",
-    description: "왜 써야 하는지 아직 납득이 안 돼요.",
-  },
-
-  {
-    group_key: "action_time",
-    option_value: "10min",
-    label: "10분",
-    description: "짧게 읽고 바로 하나만 해볼 수 있어요.",
-  },
-  {
-    group_key: "action_time",
-    option_value: "30min",
-    label: "30분",
-    description: "짧은 튜토리얼이나 간단한 적용이 가능해요.",
-  },
-  {
-    group_key: "action_time",
-    option_value: "2hours",
-    label: "2시간",
-    description: "작은 산출물이나 미니 실습이 가능해요.",
-  },
-  {
-    group_key: "action_time",
-    option_value: "half_day_weekend",
-    label: "주말 반나절",
-    description: "주말에 미니 프로젝트나 깊은 작업이 가능해요.",
-  },
-];
-
-const DEFAULT_SELECTIONS: Selections = {
-  ai_emotion: "fatigue",
-  ai_intent: "not_sure",
-  blocker: "too_much_info",
-  action_time: "30min",
-};
-
-const DIFFICULTY_LABELS: Record<string, string> = {
-  easy: "입문",
-  normal: "중간",
-  expert: "심화",
-};
+const DEFAULT_SELECTIONS: Selections = DEFAULT_CATEGORY_SELECTIONS;
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -284,7 +124,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [emailLoadedFromUrl, setEmailLoadedFromUrl] = useState(false);
   const [jobRole, setJobRole] = useState("");
-  const [difficulty, setDifficulty] = useState("easy");
+  const [difficulty, setDifficulty] = useState<string>(DEFAULT_DIFFICULTY);
   const [selections, setSelections] = useState<Selections>(DEFAULT_SELECTIONS);
 
   const [submitting, setSubmitting] = useState(false);
@@ -299,7 +139,7 @@ export default function ProfilePage() {
       aiIntent: getOptionLabel("ai_intent", selections.ai_intent),
       blocker: getOptionLabel("blocker", selections.blocker),
       actionTime: getOptionLabel("action_time", selections.action_time),
-      difficulty: DIFFICULTY_LABELS[difficulty] || difficulty,
+      difficulty: getDifficultyLabel(difficulty),
     }),
     [difficulty, selections]
   );
@@ -486,9 +326,11 @@ export default function ProfilePage() {
                       value={difficulty}
                       onChange={(event) => setDifficulty(event.target.value)}
                     >
-                      <option value="easy">입문</option>
-                      <option value="normal">중간</option>
-                      <option value="expert">심화</option>
+                      {DIFFICULTY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -523,6 +365,7 @@ export default function ProfilePage() {
                             <p style={styles.questionDescription}>
                               {group.description}
                             </p>
+                            <p style={styles.questionHelper}>{group.helper}</p>
                           </div>
                         </div>
 
@@ -919,6 +762,13 @@ const styles: Record<string, CSSProperties> = {
     margin: "7px 0 0",
     color: "#4b5563",
     fontSize: 14,
+    lineHeight: 1.6,
+    wordBreak: "keep-all",
+  },
+  questionHelper: {
+    margin: "4px 0 0",
+    color: "#2563eb",
+    fontSize: 13,
     lineHeight: 1.6,
     wordBreak: "keep-all",
   },
