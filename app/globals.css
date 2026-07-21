@@ -1344,8 +1344,28 @@ body {
     max-width: 440px;
   }
 
+  /* 명제표를 그림 아래가 아니라 옆(우측)에 둔다 — 세로로 긴 이 그림에서
+     명제표가 차지하던 세로 공간을 그림 확대에 되돌려준다. 모바일에서는
+     반대로 폭이 좁아 그림이 오히려 작아짐을 실측으로 확인해(371px→
+     299.5px, 약 19% 감소) 이 배치를 데스크톱에만 적용한다. 한글+영문+
+     숫자가 섞인 문구라 writing-mode 세로쓰기는 쓰지 않고(가독성·혼합
+     스크립트 회전 리스크), 좁은 세로 칼럼 안에서 가로쓰기 텍스트가
+     자연스럽게 줄바꿈되는 실제 미술관 벽 라벨 방식을 택했다. */
+  .mh-art {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .mh-plaque {
+    align-items: flex-start;
+    text-align: left;
+    max-width: 120px;
+    padding-top: 6px;
+  }
+
   .mh-frame img {
-    max-height: 72vh;
+    max-height: 76vh;
   }
 }
 
