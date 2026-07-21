@@ -1049,6 +1049,55 @@ body {
 .brf-footer-links {
   display: flex;
   gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* 전자상거래법 제10조 사업자 신원정보 표시 블록 */
+.brf-footer-bizinfo {
+  padding: 0 0 44px;
+  border-top: 1px solid var(--brf-rule);
+}
+
+.brf-footer-bizinfo p {
+  margin: 0;
+  padding-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--brf-muted);
+  word-break: keep-all;
+}
+
+.brf-footer-bizinfo p:first-child {
+  padding-top: 16px;
+}
+
+/* 개인정보 수집·이용 동의 체크박스 */
+.brf-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 18px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--brf-muted);
+  cursor: pointer;
+}
+
+.brf-consent input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--brf-clay-deep);
+  cursor: pointer;
+}
+
+.brf-consent a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.brf-consent a:hover {
+  color: var(--brf-clay-deep);
 }
 
 /* ── /lab 구독 페이지 ── */

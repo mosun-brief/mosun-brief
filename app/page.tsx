@@ -13,6 +13,7 @@ import {
   getDifficultyLabel,
 } from "@/lib/categoryQuestions";
 import type { CategoryGroupKey } from "@/lib/categoryQuestions";
+import { BUSINESS_INFO, displayOr } from "@/lib/businessInfo";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -223,9 +224,35 @@ function SiteFooter() {
           <a href="https://mosunbrief.kr" rel="noopener">
             모순책장
           </a>
+          <a href="/terms">이용약관</a>
           <a href="/privacy">개인정보처리방침</a>
+          <a href="/terms#refund">취소·환불 정책</a>
           <a href="/unsubscribe">구독 취소</a>
         </div>
+      </div>
+      {/* 전자상거래법 제10조(신원정보 표시) — 통신판매업자는 상호, 대표자,
+          주소, 전화번호, 이메일, 사업자등록번호, 통신판매업 신고번호,
+          호스팅 제공자를 초기 화면에 표시해야 한다. 값은
+          lib/businessInfo.ts 한 곳에서 관리하며, 등록 전에는 자리표시
+          문구가 노출된다. */}
+      <div className="brf-shell brf-footer-bizinfo">
+        <p>
+          상호: {displayOr(BUSINESS_INFO.legalName)} · 대표자:{" "}
+          {displayOr(BUSINESS_INFO.representative)} · 사업자등록번호:{" "}
+          {displayOr(BUSINESS_INFO.businessRegistrationNumber)}
+        </p>
+        <p>
+          통신판매업 신고번호:{" "}
+          {displayOr(
+            BUSINESS_INFO.mailOrderSalesNumber,
+            "(통신판매업 신고 후 기재 예정)"
+          )}{" "}
+          · 주소: {displayOr(BUSINESS_INFO.address)}
+        </p>
+        <p>
+          전화: {displayOr(BUSINESS_INFO.phone)} · 이메일: {BUSINESS_INFO.email}{" "}
+          · 호스팅서비스 제공자: {BUSINESS_INFO.hostingProvider}
+        </p>
       </div>
     </footer>
   );
@@ -492,6 +519,18 @@ export default function HomePage() {
                         수 있습니다.
                       </p>
                     </section>
+
+                    <label className="brf-consent">
+                      <input type="checkbox" required />
+                      <span>
+                        [필수] 개인정보 수집·이용에 동의합니다. 수집 항목·목적·
+                        보유 기간은{" "}
+                        <a href="/privacy" target="_blank" rel="noopener">
+                          개인정보처리방침
+                        </a>
+                        에서 확인할 수 있습니다.
+                      </span>
+                    </label>
 
                     <button
                       type="submit"
@@ -1112,6 +1151,18 @@ function BuildSection() {
                   onChange={(event) => setHelpType(event.target.value)}
                   placeholder="예: 실행 순서 정리, 도구 추천, 첫 화면 설계, 기능 우선순위 정리"
                 />
+              </label>
+
+              <label className="brf-consent">
+                <input type="checkbox" required />
+                <span>
+                  [필수] 개인정보 수집·이용에 동의합니다. 수집 항목·목적·보유
+                  기간은{" "}
+                  <a href="/privacy" target="_blank" rel="noopener">
+                    개인정보처리방침
+                  </a>
+                  에서 확인할 수 있습니다.
+                </span>
               </label>
 
               <button type="submit" className="brf-btn" disabled={buildSubmitting}>

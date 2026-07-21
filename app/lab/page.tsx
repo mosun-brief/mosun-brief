@@ -37,6 +37,7 @@ export default function LabPage() {
   const [messageType, setMessageType] = useState<MessageType>("info");
   const [isLoading, setIsLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [consented, setConsented] = useState(false);
 
   const isValidEmail = useMemo(() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -52,6 +53,12 @@ export default function LabPage() {
 
     if (!normalizedEmail || !isValidEmail) {
       setMessage("올바른 이메일 주소를 입력해주세요.");
+      setMessageType("error");
+      return;
+    }
+
+    if (!consented) {
+      setMessage("개인정보 수집·이용에 동의해야 구독 신청이 가능합니다.");
       setMessageType("error");
       return;
     }
@@ -176,6 +183,20 @@ export default function LabPage() {
                 : "기록 구독하기"}
             </button>
           </form>
+
+          <label className="brf-consent" style={{ maxWidth: 560 }}>
+            <input
+              type="checkbox"
+              checked={consented}
+              onChange={(e) => setConsented(e.target.checked)}
+            />
+            <span>
+              [필수] 개인정보 수집·이용에 동의합니다.{" "}
+              <a href="/privacy" target="_blank" rel="noopener">
+                개인정보처리방침
+              </a>
+            </span>
+          </label>
 
           {message && (
             <div

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BUSINESS_INFO, displayOr } from "@/lib/businessInfo";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 | Mosun Brief",
@@ -45,11 +46,23 @@ export default function PrivacyPage() {
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>이메일 주소</li>
+                  <li>직업 또는 상황 (선택 입력)</li>
                   <li>AI에 대한 현재 감정 또는 상태</li>
                   <li>AI로 하고 싶은 일 또는 관심 목적</li>
                   <li>현재 AI 활용에서 막히는 지점</li>
                   <li>이번 주 실행 가능한 시간</li>
                   <li>이메일 브리핑에 대한 피드백 응답</li>
+                  <li>상담 신청 시: 이름(선택), 상담 요청 내용</li>
+                  <li>
+                    유료 서비스 이용 시: 결제 일시, 결제 금액, 구매 내역 등
+                    결제 기록 (카드번호 등 결제수단 정보는 전자결제대행사인
+                    토스페이먼츠가 직접 처리하며, Mosun Brief는 이를
+                    수집·보관하지 않습니다)
+                  </li>
+                  <li>
+                    서비스 이용 과정에서 자동 생성: 접속 기록, 발송·열람 관련
+                    로그
+                  </li>
                 </ul>
               </div>
             </section>
@@ -65,6 +78,7 @@ export default function PrivacyPage() {
                   <li>구독자 상태에 맞는 자료 추천 및 큐레이션</li>
                   <li>브리핑 품질 개선을 위한 피드백 분석</li>
                   <li>구독 신청, 구독 취소, 문의 응대 등 서비스 운영</li>
+                  <li>유료 서비스의 계약 이행, 대금 결제·정산 및 환불 처리</li>
                   <li>서비스 남용 방지 및 기본적인 운영 안정성 확보</li>
                 </ul>
               </div>
@@ -80,10 +94,28 @@ export default function PrivacyPage() {
                   또는 삭제를 요청하는 경우 지체 없이 삭제합니다.
                 </p>
                 <p>
-                  다만, 서비스 운영 기록 확인, 분쟁 대응, 관계 법령상 보관이
-                  필요한 경우에는 필요한 범위 내에서 일정 기간 보관될 수
-                  있습니다.
+                  다만, 관계 법령에 따라 아래 정보는 명시된 기간 동안
+                  보관합니다.
                 </p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>
+                    계약 또는 청약철회 등에 관한 기록: 5년 (전자상거래
+                    등에서의 소비자보호에 관한 법률)
+                  </li>
+                  <li>
+                    대금 결제 및 재화 등의 공급에 관한 기록: 5년 (전자상거래
+                    등에서의 소비자보호에 관한 법률)
+                  </li>
+                  <li>
+                    소비자의 불만 또는 분쟁 처리에 관한 기록: 3년 (전자상거래
+                    등에서의 소비자보호에 관한 법률)
+                  </li>
+                  <li>
+                    표시·광고에 관한 기록: 6개월 (전자상거래 등에서의
+                    소비자보호에 관한 법률)
+                  </li>
+                  <li>서비스 접속에 관한 기록: 3개월 (통신비밀보호법)</li>
+                </ul>
               </div>
             </section>
 
@@ -109,17 +141,33 @@ export default function PrivacyPage() {
               </h2>
               <div className="mt-4 space-y-3 text-[15px] leading-8 text-[#5f554a]">
                 <p>
-                  서비스 운영을 위해 이메일 발송, 데이터 저장, 웹사이트 배포 등
-                  일부 업무를 외부 서비스에 위탁할 수 있습니다.
+                  서비스 운영을 위해 아래 업체에 개인정보 처리 업무를
+                  위탁합니다.
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
-                  <li>이메일 발송 서비스</li>
-                  <li>데이터베이스 및 인증 관련 서비스</li>
-                  <li>웹사이트 호스팅 및 배포 서비스</li>
+                  <li>Resend (미국): 이메일 브리핑 발송</li>
+                  <li>Supabase, Inc. (미국): 데이터베이스 운영 및 데이터 보관</li>
+                  <li>Vercel Inc. (미국): 웹사이트 호스팅 및 배포</li>
+                  <li>
+                    토스페이먼츠 주식회사: 유료 서비스 결제 처리 및 결제 도용
+                    방지
+                  </li>
                 </ul>
                 <p>
-                  위탁이 발생하는 경우 개인정보가 안전하게 처리될 수 있도록
-                  필요한 보호 조치를 확인합니다.
+                  위탁 계약 시 개인정보가 안전하게 처리될 수 있도록 필요한
+                  보호 조치를 확인하며, 수탁 업체가 변경되는 경우 본 방침을
+                  통해 공개합니다.
+                </p>
+                <p className="font-medium text-[#3d352d]">
+                  개인정보의 국외 이전 안내
+                </p>
+                <p>
+                  위 수탁 업체 중 Resend, Supabase, Vercel은 미국에 소재한
+                  업체로, 개인정보 처리 과정에서 수집 항목(이메일 주소, 구독
+                  설정 정보, 접속 기록 등)이 서비스 이용 기간 동안 해당 업체의
+                  국외(미국) 서버에 네트워크를 통해 전송·보관됩니다. 이전을
+                  원하지 않는 경우 구독 취소 및 삭제를 요청할 수 있으나, 이
+                  경우 서비스 이용이 어려울 수 있습니다.
                 </p>
               </div>
             </section>
@@ -177,23 +225,47 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="text-xl font-semibold tracking-[-0.02em]">
-                9. 문의 및 개인정보 보호 담당
+                9. 개인정보 보호책임자 및 문의
               </h2>
               <div className="mt-4 space-y-3 text-[15px] leading-8 text-[#5f554a]">
                 <p>
-                  개인정보와 관련한 문의, 구독 취소, 삭제 요청은 아래 연락처로
-                  요청할 수 있습니다.
+                  개인정보 처리에 관한 업무를 총괄하고 관련 문의·불만·피해구제
+                  요청을 처리하기 위해 아래와 같이 개인정보 보호책임자를
+                  지정하고 있습니다. 개인정보와 관련한 문의, 구독 취소, 삭제
+                  요청은 아래 연락처로 요청할 수 있습니다.
                 </p>
                 <div className="rounded-2xl border border-[#eadfce] bg-[#fff6e8] p-4">
-                  <p>서비스명: Mosun Brief</p>
-                  <p>문의: dmahoyeon@naver.com</p>
+                  <p>서비스명: {BUSINESS_INFO.serviceName}</p>
+                  <p>
+                    개인정보 보호책임자:{" "}
+                    {displayOr(BUSINESS_INFO.privacyOfficer.name, "(대표자, 사업자등록 후 기재 예정)")}
+                  </p>
+                  <p>문의: {BUSINESS_INFO.privacyOfficer.contact}</p>
                 </div>
               </div>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold tracking-[-0.02em]">
-                10. 개인정보처리방침 변경
+                10. 권익침해에 대한 구제 방법
+              </h2>
+              <div className="mt-4 space-y-3 text-[15px] leading-8 text-[#5f554a]">
+                <p>
+                  개인정보 침해에 대한 신고나 상담이 필요한 경우 아래 기관에
+                  문의할 수 있습니다.
+                </p>
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>개인정보분쟁조정위원회: 1833-6972 (www.kopico.go.kr)</li>
+                  <li>개인정보침해신고센터: 118 (privacy.kisa.or.kr)</li>
+                  <li>대검찰청: 1301 (www.spo.go.kr)</li>
+                  <li>경찰청: 182 (ecrm.police.go.kr)</li>
+                </ul>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold tracking-[-0.02em]">
+                11. 개인정보처리방침 변경
               </h2>
               <div className="mt-4 space-y-3 text-[15px] leading-8 text-[#5f554a]">
                 <p>
@@ -201,7 +273,9 @@ export default function PrivacyPage() {
                   수정될 수 있습니다. 변경 사항은 본 페이지를 통해 안내합니다.
                 </p>
                 <p className="text-sm text-[#7a6d5f]">
-                  시행일: 2026년 7월 8일
+                  시행일: 2026년 7월 8일 · 개정일: 2026년 7월 21일 (유료 서비스
+                  결제 관련 처리, 법정 보존기간, 처리 위탁 업체, 국외 이전,
+                  보호책임자 및 권익침해 구제 안내 추가)
                 </p>
               </div>
             </section>
