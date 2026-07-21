@@ -161,7 +161,6 @@ function MuseumFold() {
         <figcaption className="mh-plaque">
           <span className="mh-plq-title">「전망을 가진 사람」</span>
           <span className="mh-plq-credit">after Gustave Caillebotte · 《창가의 젊은 남자》 1876</span>
-          <span className="mh-plq-credit">J. Paul Getty Museum, Los Angeles</span>
         </figcaption>
       </figure>
 
@@ -173,7 +172,7 @@ function MuseumFold() {
           <em>모두가 뉴스에 쫓기는 시간에.</em>
         </h1>
         <p className="mh-line">
-          매주, 단 한 사람을 위해 쓰입니다.
+          월, 수, 금. 그를 만든 브리핑이 도착합니다.
           <br />
           이 전망은 아직 당신의 것이 아닙니다.
         </p>
