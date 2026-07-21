@@ -135,47 +135,50 @@ function PulseGlyph() {
   );
 }
 
-/* 첫 화면 fold — 함메르쇠이 「뒷모습의 젊은 여인이 있는 실내」(1903–04) 오마주.
-   존 버거식 "이미 소유한 사람의 무관심한 시선"을 첫 인상으로 쓰고, 기존
-   공감형 히어로 카피는 바로 아래 섹션으로 유지한다. 카피는 확정본이라
-   그대로 두고, 텍스트/스크린리더 이용자를 위해 alt만 정확히 채운다. */
+/* 첫 화면 fold — 카유보트 「창가의 젊은 남자」(1876) 오마주(Ⅴ안, v1인
+   함메르쇠이는 폐기). 존 버거식 "이미 소유한 사람의 무관심한 시선"을
+   첫 인상으로 쓰고, 기존 공감형 히어로 카피는 바로 아래 섹션으로
+   유지한다. 카피는 확정본이라 그대로 두고, 텍스트/스크린리더 이용자를
+   위해 alt만 정확히 채운다. 데스크톱(≥880px)에서는 CSS(.mh-fold의
+   row-reverse)가 그림을 오른쪽으로 옮긴다 — 인물이 바라보는 열린 창이
+   그림 프레임 왼쪽에 있어, 그림을 오른쪽에 두면 그 시선이 왼쪽 카피
+   쪽을 향한다(이유는 globals.css .mh-fold 주석 참고). DOM 순서는
+   그림 먼저·카피 나중으로 그대로 둬 스크린리더 낭독 순서는 안 바뀐다. */
 function MuseumFold() {
   return (
     <section className="mh-fold">
       <figure className="mh-art">
         <div className="mh-frame">
           <Image
-            src="/art/hammershoi.jpg"
-            alt="빌헬름 함메르쇠이, 뒷모습의 젊은 여인이 있는 실내, 1903–04"
-            width={1920}
-            height={2297}
+            src="/art/caillebotte.jpg"
+            alt="귀스타브 카유보트, 창가의 젊은 남자, 1876"
+            width={1095}
+            height={1600}
             priority
             sizes="(min-width: 880px) 45vw, 75vw"
           />
         </div>
         <figcaption className="mh-plaque">
-          <span className="mh-plq-title">「돌아보지 않는 여인」</span>
-          <span className="mh-plq-credit">
-            after Vilhelm Hammershøi · 《뒷모습의 젊은 여인이 있는 실내》 1903–04 ·
-            Randers Kunstmuseum
-          </span>
+          <span className="mh-plq-title">「전망을 가진 사람」</span>
+          <span className="mh-plq-credit">after Gustave Caillebotte · 《창가의 젊은 남자》 1876</span>
+          <span className="mh-plq-credit">J. Paul Getty Museum, Los Angeles</span>
         </figcaption>
       </figure>
 
       <div className="mh-copy">
         <p className="mh-eyebrow">Personal AI Briefing</p>
         <h1 className="mh-h1">
-          그녀는 돌아보지 않는다.
+          그는 도시를 내려다본다.
           <br />
-          <em>브리핑을 읽는 중이므로.</em>
+          <em>모두가 뉴스에 쫓기는 시간에.</em>
         </h1>
         <p className="mh-line">
-          그 고요는 관람자와 나누는 것이 아닙니다.
+          매주, 단 한 사람을 위해 쓰입니다.
           <br />
-          아직, 당신의 것도 아닙니다.
+          이 전망은 아직 당신의 것이 아닙니다.
         </p>
         <a className="mh-cta" href="#subscribe-result">
-          나의 브리핑 만들기
+          나의 브리핑 받기
         </a>
         <a className="mh-peek" href="#preview">
           어느 구독자에게 간 브리핑 엿보기 ↓

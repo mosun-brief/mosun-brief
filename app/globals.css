@@ -1128,17 +1128,26 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   Mosun Brief — 히어로 fold: 함메르쇠이 전시실 (B안, 2026-07-21)
+   Mosun Brief — 히어로 fold: 카유보트 「창가의 젊은 남자」(Ⅴ안, 2026-07-21)
+   v1(함메르쇠이)은 폐기, 이 블록이 유일한 기준.
    존 버거식 "이미 소유한 사람"의 무관심한 시선을 오마주.
    의도적으로 다크모드 미대응(라이트 고정) — 미술관 벽은 방문자의 기기
-   설정에 따라 반전되지 않는다는 콘셉트 판단. --brf-* 전역 변수를 쓰지
-   않고 .mh-fold 스코프 안에서만 자체 --mh-* 토큰을 씁니다.
+   설정에 따라 반전되지 않는다는 콘셉트 판단(v1과 동일 유지). --brf-*
+   전역 변수를 쓰지 않고 .mh-fold 스코프 안에서만 자체 --mh-* 토큰을 씁니다.
+
+   데스크톱(≥880px)에서 row-reverse로 그림을 오른쪽에 배치합니다(지시서
+   기본안은 "그림 좌/카피 우"였음). 그림 속 인물의 시선·주의가 향하는
+   열린 창/거리 풍경이 그림 프레임 안에서 왼쪽에 있어, 스펙대로 그림을
+   왼쪽에 두면 그 시선이 카피 반대 방향인 화면 밖으로 빠집니다. 그림을
+   오른쪽으로 옮기면 그 시선이 왼쪽의 카피 쪽을 향하게 되어 구성이
+   안으로 모입니다. row-reverse는 DOM 순서(그림 먼저, 카피 나중 —
+   스크린리더 낭독 순서 유지)는 그대로 두고 시각적 순서만 뒤집습니다.
    ══════════════════════════════════════════════ */
 
 .mh-fold {
-  --mh-wall: #eae8e3;
-  --mh-ink: #26241f;
-  --mh-sub: #6a675f;
+  --mh-wall: #edeae3;
+  --mh-ink: #1f1c17;
+  --mh-sub: #615b50;
   --mh-rust: #c2542b;
 
   position: relative;
@@ -1148,8 +1157,8 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 76px 22px 56px;
-  gap: 26px;
+  padding: 64px 22px 44px;
+  gap: 18px;
   background: var(--mh-wall);
   color: var(--mh-ink);
   overflow: hidden;
@@ -1172,7 +1181,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
   max-width: 100%;
 }
 
@@ -1180,14 +1189,14 @@ body {
   position: relative;
   background: var(--mh-wall);
   border: 1px solid var(--mh-ink);
-  padding: 10px;
-  box-shadow: 0 26px 52px -30px rgba(23, 21, 18, 0.5);
+  padding: 9px;
+  box-shadow: 0 24px 48px -28px rgba(23, 21, 18, 0.5);
 }
 
 .mh-frame::after {
   content: "";
   position: absolute;
-  inset: 5px;
+  inset: 4px;
   pointer-events: none;
   border: 1px solid rgba(23, 21, 18, 0.28);
 }
@@ -1195,7 +1204,7 @@ body {
 .mh-frame img {
   display: block;
   max-width: 100%;
-  max-height: 46dvh;
+  max-height: 38dvh;
   width: auto;
   height: auto;
 }
@@ -1204,7 +1213,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .mh-plaque::before {
@@ -1213,13 +1222,13 @@ body {
   height: 1px;
   background: var(--mh-ink);
   opacity: 0.55;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .mh-plq-title {
   font-family: var(--brf-serif);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12.5px;
   letter-spacing: 0.06em;
 }
 
@@ -1235,7 +1244,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
   max-width: 560px;
 }
 
@@ -1245,14 +1253,17 @@ body {
   letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--mh-sub);
+  margin-bottom: 6px;
 }
 
 .mh-h1 {
   font-family: var(--brf-serif);
   font-weight: 900;
-  font-size: clamp(24px, 6.4vw, 42px);
+  font-size: clamp(23px, 6.1vw, 40px);
   line-height: 1.32;
+  letter-spacing: -0.015em;
   word-break: keep-all;
+  margin-bottom: 14px;
   color: var(--mh-ink);
 }
 
@@ -1263,10 +1274,11 @@ body {
 
 .mh-line {
   font-family: var(--brf-serif);
-  font-size: 14.5px;
-  line-height: 1.75;
+  font-size: 14px;
+  line-height: 1.72;
   color: var(--mh-sub);
   word-break: keep-all;
+  margin-bottom: 22px;
 }
 
 .mh-cta {
@@ -1277,9 +1289,10 @@ body {
   font-size: 13.5px;
   font-weight: 500;
   letter-spacing: 0.16em;
-  padding: 15px 34px;
+  padding: 14px 32px;
   border-radius: 2px;
   transition: background 0.25s ease;
+  margin-bottom: 12px;
 }
 
 .mh-cta:hover {
@@ -1295,7 +1308,7 @@ body {
   position: relative;
   z-index: 2;
   display: inline-block;
-  font-size: 11.5px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--mh-sub);
   text-decoration: underline;
@@ -1319,12 +1332,20 @@ body {
 }
 
 @media (min-width: 880px) {
-  .mh-frame img {
-    max-height: 58dvh;
+  .mh-fold {
+    flex-direction: row-reverse;
+    gap: 72px;
+    padding: 96px 48px;
+    text-align: left;
   }
 
-  .mh-fold {
-    gap: 32px;
+  .mh-copy {
+    align-items: flex-start;
+    max-width: 440px;
+  }
+
+  .mh-frame img {
+    max-height: 64vh;
   }
 }
 
