@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -32,6 +32,10 @@ export const metadata: Metadata = {
     description:
       "그저 아는 자가 아닌, AI창작자로 — 이번 주 당신을 위한 맞춤 브리핑",
   },
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({

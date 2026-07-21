@@ -294,6 +294,68 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
+// 메일 본문을 <html>/<head>로 감싸 color-scheme을 명시합니다. 이게 없으면
+// iOS Mail/Apple Mail의 "스마트 다크 모드"가 배경·글자색을 요소별로 제멋대로
+// 반전시켜(#111827 짙은 네이비 히어로가 밝은 라벤더로 바뀌는 식) 블록마다
+// 일관성이 깨집니다. color-scheme meta로 "라이트/다크 둘 다 우리가 직접
+// 그린다"고 선언한 뒤, @media (prefers-color-scheme: dark)로 실제 다크
+// 팔레트를 명시적으로 지정합니다. 모든 다크 규칙은 class 선택자 + !important만
+// 쓰고, 라이트 모드 inline style(색상 값)은 그대로 둬 라이트 모드 렌더링에는
+// 영향이 없습니다.
+function wrapEmailDocument(bodyHtml: string) {
+  const darkStyle = `
+    @media (prefers-color-scheme: dark) {
+      body, .afu-page { background:#0b0f1a !important; }
+
+      .afu-notice { background:#3a2a06 !important; border-color:#92651b !important; }
+      .afu-notice, .afu-notice * { color:#fcd34d !important; }
+
+      .afu-hero { background:#111827 !important; color:#ffffff !important; }
+
+      .afu-card { background:#151a24 !important; border-color:#232a38 !important; }
+      .afu-card-title { color:#f3f4f6 !important; }
+      .afu-card-text { color:#cbd5e1 !important; }
+
+      .afu-box-neutral { background:#1a2030 !important; }
+
+      .afu-box-green { background:#0f2b1f !important; border-color:#1c4a35 !important; }
+      .afu-box-green-title { color:#6ee7b7 !important; }
+      .afu-box-green-text { color:#86efac !important; }
+
+      .afu-box-orange { background:#2b1a08 !important; border-color:#5c3a12 !important; }
+      .afu-box-orange-text { color:#fdba74 !important; }
+
+      .afu-box-blue { background:#0f1d33 !important; border-color:#1e3a5f !important; }
+      .afu-box-blue-title { color:#93c5fd !important; }
+      .afu-box-blue-text { color:#bfdbfe !important; }
+
+      .afu-chip { background:#1c2434 !important; border-color:#2e3648 !important; color:#cbd5e1 !important; }
+      .afu-chip-accent { background:#16233d !important; color:#93c5fd !important; }
+
+      .afu-btn-primary { background:#f3f4f6 !important; color:#111827 !important; }
+      .afu-btn-secondary { background:#151a24 !important; border-color:#e5e7eb !important; color:#e5e7eb !important; }
+      .afu-btn-accent { background:#3b82f6 !important; color:#ffffff !important; }
+
+      .afu-muted { color:#94a3b8 !important; }
+    }
+  `;
+
+  return `<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title>AI-FU 브리프</title>
+    <style>${darkStyle}</style>
+  </head>
+  <body style="margin:0;padding:0;">
+    ${bodyHtml}
+  </body>
+</html>`;
+}
+
 function getProfileUrl(subscriber: Subscriber) {
   const params = new URLSearchParams();
   params.set("email", subscriber.email);
@@ -933,10 +995,10 @@ function buildFeedbackButtons({
   const url = escapeHtml(buildFeedbackPageUrl({ subscriber, item }));
 
   return `
-    <a href="${url}" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#ffffff;color:#111827;border:1.5px solid #111827;text-decoration:none;font-size:14px;font-weight:800;">
+    <a href="${url}" class="afu-btn-secondary" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#ffffff;color:#111827;border:1.5px solid #111827;text-decoration:none;font-size:14px;font-weight:800;">
       피드백 남기기
     </a>
-    <p style="margin:8px 0 0;font-size:12px;line-height:1.6;color:#9ca3af;">
+    <p class="afu-muted" style="margin:8px 0 0;font-size:12px;line-height:1.6;color:#9ca3af;">
       자료 만족도와 실행 여부를 한 화면에서 남길 수 있어요 · 다음 추천에 반영돼요
     </p>
   `;
@@ -947,11 +1009,11 @@ function buildMatchedReasonHtml(scoredItem: ScoredItem) {
 
   if (reasons.length === 0) {
     return `
-      <div style="margin-top:16px;padding:14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;">
-        <p style="margin:0 0 6px;font-size:14px;font-weight:800;color:#9a3412;">
+      <div class="afu-box-orange" style="margin-top:16px;padding:14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;">
+        <p class="afu-box-orange-text" style="margin:0 0 6px;font-size:14px;font-weight:800;color:#9a3412;">
           이 자료가 나에게 온 이유
         </p>
-        <p style="margin:0;font-size:14px;line-height:1.7;color:#9a3412;">
+        <p class="afu-box-orange-text" style="margin:0;font-size:14px;line-height:1.7;color:#9a3412;">
           아직 개인화 근거가 충분하지 않아, 전체 추천 자료로 포함했어요.
         </p>
       </div>
@@ -959,11 +1021,11 @@ function buildMatchedReasonHtml(scoredItem: ScoredItem) {
   }
 
   return `
-    <div style="margin-top:16px;padding:14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;">
-      <p style="margin:0 0 8px;font-size:14px;font-weight:800;color:#9a3412;">
+    <div class="afu-box-orange" style="margin-top:16px;padding:14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;">
+      <p class="afu-box-orange-text" style="margin:0 0 8px;font-size:14px;font-weight:800;color:#9a3412;">
         이 자료가 나에게 온 이유
       </p>
-      <div style="font-size:14px;line-height:1.75;color:#9a3412;">
+      <div class="afu-box-orange-text" style="font-size:14px;line-height:1.75;color:#9a3412;">
         ${reasons
           .map((reason) => `<div>• ${escapeHtml(reason)}</div>`)
           .join("")}
@@ -976,18 +1038,18 @@ function buildProfileLinkHtml(subscriber: Subscriber) {
   const profileUrl = escapeHtml(getProfileUrl(subscriber));
 
   return `
-    <div style="margin-top:22px;padding:20px;border-radius:18px;background:#eff6ff;border:1px solid #bfdbfe;">
-      <p style="margin:0 0 8px;font-size:15px;font-weight:900;color:#1d4ed8;">
+    <div class="afu-box-blue" style="margin-top:22px;padding:20px;border-radius:18px;background:#eff6ff;border:1px solid #bfdbfe;">
+      <p class="afu-box-blue-title" style="margin:0 0 8px;font-size:15px;font-weight:900;color:#1d4ed8;">
         지금 상태가 바뀌었나요?
       </p>
-      <p style="margin:0 0 14px;font-size:14px;line-height:1.75;color:#1e3a8a;">
+      <p class="afu-box-blue-text" style="margin:0 0 14px;font-size:14px;line-height:1.75;color:#1e3a8a;">
         AI에 대한 감정, 목적, 막히는 지점은 계속 바뀝니다. 지금 상태가 달라졌다면 재진단 화면에서 다시 설정하세요.
         다음 브리프부터 새 상태가 추천 점수에 반영됩니다.
       </p>
-      <a href="${profileUrl}" style="display:inline-block;padding:12px 16px;border-radius:13px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:900;">
+      <a href="${profileUrl}" class="afu-btn-accent" style="display:inline-block;padding:12px 16px;border-radius:13px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:900;">
         내 상태 다시 설정하기
       </a>
-      <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#64748b;">
+      <p class="afu-muted" style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#64748b;">
         같은 이메일로 제출하면 기존 구독자 정보가 업데이트됩니다.
       </p>
     </div>
@@ -1000,13 +1062,13 @@ function buildEmailFooterHtml(subscriber: Subscriber) {
 
   return `
     <div style="margin-top:18px;text-align:center;">
-      <p style="margin:0;font-size:12px;line-height:1.7;color:#9ca3af;">
+      <p class="afu-muted" style="margin:0;font-size:12px;line-height:1.7;color:#9ca3af;">
         이 메일은 Mosun Brief 구독 신청자에게 발송되었습니다.
       </p>
-      <p style="margin:8px 0 0;font-size:12px;line-height:1.7;color:#9ca3af;">
-        <a href="${privacyUrl}" style="color:#6b7280;text-decoration:underline;">개인정보처리방침</a>
-        <span style="color:#d1d5db;"> · </span>
-        <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">구독 취소</a>
+      <p class="afu-muted" style="margin:8px 0 0;font-size:12px;line-height:1.7;color:#9ca3af;">
+        <a href="${privacyUrl}" class="afu-muted" style="color:#6b7280;text-decoration:underline;">개인정보처리방침</a>
+        <span class="afu-muted" style="color:#d1d5db;"> · </span>
+        <a href="${unsubscribeUrl}" class="afu-muted" style="color:#6b7280;text-decoration:underline;">구독 취소</a>
       </p>
     </div>
   `;
@@ -1046,24 +1108,24 @@ function buildNewsletterHtml({
       const matchedReasonHtml = buildMatchedReasonHtml(scoredItem);
 
       return `
-        <div style="padding:20px;border:1px solid #e5e7eb;border-radius:18px;margin:18px 0;background:#ffffff;">
+        <div class="afu-card" style="padding:20px;border:1px solid #e5e7eb;border-radius:18px;margin:18px 0;background:#ffffff;">
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;">
-            <span style="display:inline-block;padding:6px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:900;">
+            <span class="afu-chip-accent" style="display:inline-block;padding:6px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:900;">
               추천 ${index + 1}
             </span>
-            <span style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
+            <span class="afu-chip" style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
               ${category}
             </span>
-            <span style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
+            <span class="afu-chip" style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
               ${difficulty}
             </span>
-            <span style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
+            <span class="afu-chip" style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
               ${sourceType}
             </span>
             ${
               stance
                 ? `
-                  <span style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
+                  <span class="afu-chip" style="display:inline-block;padding:6px 9px;border-radius:999px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;font-size:12px;font-weight:800;">
                     ${stance}
                   </span>
                 `
@@ -1071,7 +1133,7 @@ function buildNewsletterHtml({
             }
           </div>
 
-          <h2 style="margin:0;font-size:21px;line-height:1.4;color:#111827;">
+          <h2 class="afu-card-title" style="margin:0;font-size:21px;line-height:1.4;color:#111827;">
             ${title}
           </h2>
 
@@ -1081,10 +1143,10 @@ function buildNewsletterHtml({
             mainSummary
               ? `
                 <div style="margin-top:16px;">
-                  <p style="margin:0 0 6px;font-size:14px;font-weight:800;color:#111827;">
+                  <p class="afu-card-title" style="margin:0 0 6px;font-size:14px;font-weight:800;color:#111827;">
                     먼저 이것만 이해하세요
                   </p>
-                  <p style="margin:0;font-size:15px;line-height:1.75;color:#374151;">
+                  <p class="afu-card-text" style="margin:0;font-size:15px;line-height:1.75;color:#374151;">
                     ${mainSummary}
                   </p>
                 </div>
@@ -1095,11 +1157,11 @@ function buildNewsletterHtml({
           ${
             balanceSummary
               ? `
-                <div style="margin-top:16px;padding:14px;border-radius:12px;background:#f9fafb;">
-                  <p style="margin:0 0 6px;font-size:14px;font-weight:800;color:#111827;">
+                <div class="afu-box-neutral" style="margin-top:16px;padding:14px;border-radius:12px;background:#f9fafb;">
+                  <p class="afu-card-title" style="margin:0 0 6px;font-size:14px;font-weight:800;color:#111827;">
                     균형 관점
                   </p>
-                  <p style="margin:0;font-size:15px;line-height:1.75;color:#4b5563;">
+                  <p class="afu-card-text" style="margin:0;font-size:15px;line-height:1.75;color:#4b5563;">
                     ${balanceSummary}
                   </p>
                 </div>
@@ -1107,11 +1169,11 @@ function buildNewsletterHtml({
               : ""
           }
 
-          <div style="margin-top:16px;padding:16px;border-radius:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
-            <p style="margin:0 0 7px;font-size:14px;font-weight:900;color:#047857;">
+          <div class="afu-box-green" style="margin-top:16px;padding:16px;border-radius:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
+            <p class="afu-box-green-title" style="margin:0 0 7px;font-size:14px;font-weight:900;color:#047857;">
               오늘 딱 하나 할 일
             </p>
-            <p style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
+            <p class="afu-box-green-text" style="margin:0;font-size:15px;line-height:1.75;color:#065f46;">
               ${
                 actionHint ||
                 "이 자료의 제목과 핵심 요약만 보고, 내 일이나 생활에 적용할 수 있는 장면을 하나만 적어보세요."
@@ -1123,7 +1185,7 @@ function buildNewsletterHtml({
             ${
               safeSourceUrl
                 ? `
-                  <a href="${safeSourceUrl}" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#111827;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">
+                  <a href="${safeSourceUrl}" class="afu-btn-primary" style="display:inline-block;padding:13px 18px;border-radius:12px;background:#111827;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">
                     원문 보기
                   </a>
                   <div style="margin-top:10px;">
@@ -1138,13 +1200,13 @@ function buildNewsletterHtml({
     })
     .join("");
 
-  return `
-    <div style="margin:0;padding:0;background:#f6f7fb;">
+  const bodyHtml = `
+    <div class="afu-page" style="margin:0;padding:0;background:#f6f7fb;">
       <div style="max-width:680px;margin:0 auto;padding:32px 20px;font-family:Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;">
         ${
           mode === "test"
             ? `
-              <div style="margin-bottom:16px;padding:12px 16px;border-radius:12px;background:#fef3c7;border:1px solid #f59e0b;">
+              <div class="afu-notice" style="margin-bottom:16px;padding:12px 16px;border-radius:12px;background:#fef3c7;border:1px solid #f59e0b;">
                 <p style="margin:0;font-size:14px;font-weight:800;color:#92400e;">
                   테스트 발송입니다. 실제 구독자 발송 로그와 하루 발송 제한 잠금은 변경하지 않습니다.
                 </p>
@@ -1153,7 +1215,7 @@ function buildNewsletterHtml({
             : ""
         }
 
-        <div style="padding:26px;border-radius:22px;background:#111827;color:#ffffff;">
+        <div class="afu-hero" style="padding:26px;border-radius:22px;background:#111827;color:#ffffff;">
           <p style="margin:0 0 8px;font-size:14px;color:#93c5fd;font-weight:800;">
             ${modeLabel}
           </p>
@@ -1169,11 +1231,11 @@ function buildNewsletterHtml({
           </p>
         </div>
 
-        <div style="margin-top:22px;padding:20px;border-radius:18px;background:#ffffff;border:1px solid #e5e7eb;">
-          <p style="margin:0 0 8px;font-size:15px;font-weight:900;color:#111827;">
+        <div class="afu-card" style="margin-top:22px;padding:20px;border-radius:18px;background:#ffffff;border:1px solid #e5e7eb;">
+          <p class="afu-card-title" style="margin:0 0 8px;font-size:15px;font-weight:900;color:#111827;">
             AI-FU는 뉴스레터가 아니라 실행 브리프입니다
           </p>
-          <p style="margin:0;font-size:15px;line-height:1.8;color:#374151;">
+          <p class="afu-card-text" style="margin:0;font-size:15px;line-height:1.8;color:#374151;">
             AI 소식을 많이 보내는 대신, 지금 당신에게 필요한 자료를 고르고
             “왜 이 자료가 왔는지”와 “오늘 딱 하나 할 일”을 함께 보냅니다.
           </p>
@@ -1183,14 +1245,14 @@ function buildNewsletterHtml({
 
         ${buildProfileLinkHtml(subscriber)}
 
-        <div style="margin-top:24px;padding:18px;border-radius:16px;background:#ffffff;border:1px solid #e5e7eb;">
-          <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#111827;">
+        <div class="afu-card" style="margin-top:24px;padding:18px;border-radius:16px;background:#ffffff;border:1px solid #e5e7eb;">
+          <p class="afu-card-title" style="margin:0 0 8px;font-size:14px;font-weight:900;color:#111827;">
             다음 브리프를 더 잘 맞추는 방법
           </p>
-          <p style="margin:0;font-size:13px;line-height:1.75;color:#6b7280;">
+          <p class="afu-card-text" style="margin:0;font-size:13px;line-height:1.75;color:#6b7280;">
             각 자료 아래의 "피드백 남기기"를 눌러 만족도와 실행 여부를 남겨주세요. 다음 자료 선택, 난이도, Action hint 추천 점수에 반영됩니다.
           </p>
-          <p style="margin:10px 0 0;font-size:13px;line-height:1.7;color:#9ca3af;">
+          <p class="afu-muted" style="margin:10px 0 0;font-size:13px;line-height:1.7;color:#9ca3af;">
             이 메일은 AI-FU MVP 테스트/운영 발송입니다.
           </p>
         </div>
@@ -1199,6 +1261,8 @@ function buildNewsletterHtml({
       </div>
     </div>
   `;
+
+  return wrapEmailDocument(bodyHtml);
 }
 
 async function sendEmail({

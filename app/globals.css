@@ -20,6 +20,31 @@
   --brf-err-ink: #9c3b21;
 }
 
+/* 모든 색은 위 --brf-* 토큰만 참조하도록 되어 있어(하드코딩 hex 없음),
+   여기서 토큰 값만 다크 팔레트로 바꾸면 페이지 전체에 일관되게 반영됩니다.
+   브라우저는 이메일 클라이언트처럼 색을 제멋대로 반전시키지 않으므로
+   (아래 layout.tsx의 color-scheme 메타와 함께) 이 값이 곧 실제 렌더링 색입니다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0e0c;
+    --foreground: #f3f1ea;
+
+    --brf-paper: #15130f;
+    --brf-paper-2: #1c1a15;
+    --brf-ink: #f3f1ea;
+    --brf-muted: #a89f8c;
+    --brf-clay: #e08a63;
+    --brf-clay-deep: #f0a074;
+    --brf-clay-tint: #2b1c14;
+    --brf-rule: #332f27;
+    --brf-card: #1c1a15;
+    --brf-ok-bg: #1c2a17;
+    --brf-ok-ink: #a8c98f;
+    --brf-err-bg: #2e1a14;
+    --brf-err-ink: #e0876a;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
