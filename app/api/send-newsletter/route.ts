@@ -8,6 +8,10 @@ import {
   recordFailure,
   recordSuccess,
 } from "@/lib/adminAuth";
+import {
+  getPersonaType,
+  getReadablePersonaKorean as getReadablePersonaKorean_,
+} from "@/lib/categoryQuestions";
 
 export const dynamic = "force-dynamic";
 
@@ -371,38 +375,23 @@ function getUnsubscribeUrl(subscriber: Subscriber) {
   return `${getSiteUrl()}/unsubscribe?${params.toString()}`;
 }
 
+// persona_type이 비어있는(거의 없는) 경우에만 여기서 다시 계산합니다.
+// subscribe/route.ts가 저장 시점에 쓰는 것과 완전히 같은 lib 함수를 쓰므로,
+// 두 곳이 서로 다른 규칙으로 계산해 값이 어긋나는 일이 없습니다
+// (예전에는 이 파일만 "fatigue" → "Overloaded"로 계산해 subscribe/route.ts의
+// "Avoider"와 달랐고, "Builder-Anxious"는 한글 매핑이 아예 없어 이메일에
+// 영어 그대로 노출됐습니다).
 function getReadablePersona(subscriber: Subscriber) {
   if (subscriber.persona_type) return subscriber.persona_type;
 
-  if (subscriber.ai_intent === "service_building") return "Builder";
-  if (subscriber.ai_intent === "work_efficiency") return "Adopter";
-  if (subscriber.ai_emotion === "anxious") return "Anxious";
-  if (subscriber.ai_emotion === "skeptical") return "Skeptic";
-  if (subscriber.ai_emotion === "fatigue") return "Overloaded";
-  if (subscriber.ai_emotion === "curious") return "Explorer";
-  if (subscriber.ai_emotion === "excited") return "Optimist";
-  if (subscriber.ai_emotion === "unsure") return "Unclear";
-
-  return "AI-FU 구독자";
+  return getPersonaType({
+    aiEmotion: subscriber.ai_emotion || "",
+    aiIntent: subscriber.ai_intent || "",
+  });
 }
 
 function getReadablePersonaKorean(subscriber: Subscriber) {
-  const persona = getReadablePersona(subscriber);
-
-  const personaLabels: Record<string, string> = {
-    Builder: "직접 만들어보고 싶은 Builder",
-    Adopter: "업무에 적용하고 싶은 Adopter",
-    Anxious: "AI 변화가 불안한 관찰자",
-    Skeptic: "과장을 경계하는 Skeptic",
-    Overloaded: "정보 과부하 상태의 구독자",
-    Avoider: "정보 과부하 상태의 구독자",
-    Explorer: "가능성을 탐색하는 Explorer",
-    Optimist: "기대감을 가진 Optimist",
-    Unclear: "아직 방향을 찾는 구독자",
-    Test: "테스트 구독자",
-  };
-
-  return personaLabels[persona] || persona;
+  return getReadablePersonaKorean_(getReadablePersona(subscriber));
 }
 
 function getItemMainSummary(item: NewsletterItem) {
