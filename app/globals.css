@@ -1126,3 +1126,210 @@ body {
     display: none;
   }
 }
+
+/* ══════════════════════════════════════════════
+   Mosun Brief — 히어로 fold: 함메르쇠이 전시실 (B안, 2026-07-21)
+   존 버거식 "이미 소유한 사람"의 무관심한 시선을 오마주.
+   의도적으로 다크모드 미대응(라이트 고정) — 미술관 벽은 방문자의 기기
+   설정에 따라 반전되지 않는다는 콘셉트 판단. --brf-* 전역 변수를 쓰지
+   않고 .mh-fold 스코프 안에서만 자체 --mh-* 토큰을 씁니다.
+   ══════════════════════════════════════════════ */
+
+.mh-fold {
+  --mh-wall: #eae8e3;
+  --mh-ink: #26241f;
+  --mh-sub: #6a675f;
+  --mh-rust: #c2542b;
+
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 76px 22px 56px;
+  gap: 26px;
+  background: var(--mh-wall);
+  color: var(--mh-ink);
+  overflow: hidden;
+}
+
+.mh-fold::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+}
+
+.mh-art {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+}
+
+.mh-frame {
+  position: relative;
+  background: var(--mh-wall);
+  border: 1px solid var(--mh-ink);
+  padding: 10px;
+  box-shadow: 0 26px 52px -30px rgba(23, 21, 18, 0.5);
+}
+
+.mh-frame::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  border: 1px solid rgba(23, 21, 18, 0.28);
+}
+
+.mh-frame img {
+  display: block;
+  max-width: 100%;
+  max-height: 46dvh;
+  width: auto;
+  height: auto;
+}
+
+.mh-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.mh-plaque::before {
+  content: "";
+  width: 26px;
+  height: 1px;
+  background: var(--mh-ink);
+  opacity: 0.55;
+  margin-bottom: 3px;
+}
+
+.mh-plq-title {
+  font-family: var(--brf-serif);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.mh-plq-credit {
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--mh-sub);
+}
+
+.mh-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 560px;
+}
+
+.mh-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--mh-sub);
+}
+
+.mh-h1 {
+  font-family: var(--brf-serif);
+  font-weight: 900;
+  font-size: clamp(24px, 6.4vw, 42px);
+  line-height: 1.32;
+  word-break: keep-all;
+  color: var(--mh-ink);
+}
+
+.mh-h1 em {
+  font-style: normal;
+  color: var(--mh-rust);
+}
+
+.mh-line {
+  font-family: var(--brf-serif);
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--mh-sub);
+  word-break: keep-all;
+}
+
+.mh-cta {
+  display: inline-block;
+  text-decoration: none;
+  background: var(--mh-ink);
+  color: var(--mh-wall);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  padding: 15px 34px;
+  border-radius: 2px;
+  transition: background 0.25s ease;
+}
+
+.mh-cta:hover {
+  background: var(--mh-rust);
+}
+
+.mh-cta:focus-visible {
+  outline: 2px solid var(--mh-rust);
+  outline-offset: 3px;
+}
+
+.mh-peek {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--mh-sub);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.mh-peek:focus-visible {
+  outline: 2px solid var(--mh-rust);
+  outline-offset: 3px;
+}
+
+.mh-rustbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--mh-rust);
+  z-index: 2;
+}
+
+@media (min-width: 880px) {
+  .mh-frame img {
+    max-height: 58dvh;
+  }
+
+  .mh-fold {
+    gap: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mh-cta {
+    transition: none;
+  }
+}
